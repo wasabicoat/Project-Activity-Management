@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project Activity Management</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .editable-input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 1px #3b82f6;
+    }
+    .status-pill {
+      @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold;
+    }
+  </style>
+  <script>
+    let allData = {};
+    let currentFilter = 'In-Progress';
+    let workstreamOrder = [];
+
+    function loadData() {
+      google.script.run.withSuccessHandler(renderData).getTaskData();
+    }
+
+    function renderData({ tasks, order }) {
+      allData = tasks;
+      workstreamOrder = order;
+      renderWorkstreams();
+    }
+
+    function renderStatusPill(status) {
+      const map = {
+        'Not Start': 'bg-gray-200 text-gray-800',
+        'In-Progress': 'bg-yellow-200 text-yellow-800',
+        'Complete': 'bg-green-200 text-green-800',
+        'On hold': 'bg-orange-200 text-orange-800',
+        'TBC from ttb': 'bg-purple-200 text-purple-800',
+        'Closed': 'bg-red-200 text-red-800',
+      };
+      const css = map[status] || 'bg-gray-100 text-gray-700';
+      return `<span class="status-pill ${css}">${status}</span>`;
+    }
+
+    function renderWorkstreams() {
+      const container = document.getElementById('workstreams');
+      container.innerHTML = '';
+
+      workstreamOrder.forEach(workstream => {
+        const taskList = (allData[workstream] || []).filter(t => currentFilter === 'All' || t.status === currentFilter);
+        if (!taskList.length) return;
+
+        const section = document.createElement('div');
+        section.className = 'mb-6 bg-white rounded-xl shadow-xl p-6 border border-blue-100';
+
+        const header = document.createElement('div');
+        header.className = 'bg-blue-50 px-4 py-2 rounded-lg flex justify-between items-center mb-4';
+
+        const titleInput = document.createElement('input');
+        titleInput.className = 'font-bold text-lg bg-transparent border-b border-gray-300 editable-input';
+        titleInput.value = workstream;
+        titleInput.addEventListener('change', () => {
+          google.script.run.renameWorkstream(workstream, titleInput.value);
+          loadData();
+        });
+
+        const controls = document.createElement('div');
+        controls.className = 'space-x-2';
+
+        const toggleBtn = document.createElement('button');
+        toggleBtn.textContent = '−';
+        toggleBtn.className = 'text-xl';
+        toggleBtn.onclick = () => {
+          taskContainer.classList.toggle('hidden');
+          toggleBtn.textContent = taskContainer.classList.contains('hidden') ? '+' : '−';
+        };
+
+        const upBtn = document.createElement('button');
+        upBtn.innerHTML = '⬆️';
+        upBtn.onclick = () => {
+          google.script.run.withSuccessHandler(loadData).moveWorkstream(workstream, 'up');
+        };
+
+        const downBtn = document.createElement('button');
+        downBtn.innerHTML = '⬇️';
+        downBtn.onclick = () => {
+          google.script.run.withSuccessHandler(loadData).moveWorkstream(workstream, 'down');
+        };
+
+        const addBtn = document.createElement('button');
+        addBtn.className = 'text-blue-600 text-sm hover:underline';
+        addBtn.textContent = '+ เพิ่ม Task';
+        addBtn.onclick = () => {
+          const task = {
+            task: '', owner: '', duedate: '',
+            status: currentFilter === 'All' ? 'Not Start' : currentFilter,
+            remark: '', workstream
+          };
+          google.script.run.withSuccessHandler(loadData).addTask(task);
+        };
+
+        controls.append(toggleBtn, upBtn, downBtn, addBtn);
+        header.append(titleInput, controls);
+
+        const taskContainer = document.createElement('div');
+        taskContainer.className = 'space-y-4';
+
+        taskList.forEach((task) => {
+          const card = document.createElement('div');
+          card.className = 'bg-blue-50 rounded-lg p-4 shadow flex flex-col gap-2';
+
+          const field = (label, html) =>
+            `<div class="text-sm"><strong>${label}:</strong> ${html}</div>`;
+
+          card.innerHTML =
+            field('📌 Task', `<input class='editable-input border rounded px-2 w-full' value='${task.task}' onchange='updateTask(${task.rowIndex}, "task", this.value)'>`) +
+            field('👤 Owner', `<input class='editable-input border rounded px-2 w-full' value='${task.owner}' onchange='updateTask(${task.rowIndex}, "owner", this.value)'>`) +
+            field('📅 Due', `<input class='editable-input border rounded px-2' type='date' value='${task.duedate}' onchange='updateTask(${task.rowIndex}, "duedate", this.value)'>`) +
+            field('📍 Status', `<select class='editable-input border rounded px-2' onchange='updateTask(${task.rowIndex}, "status", this.value)'>${["Not Start","In-Progress","Complete","On hold","TBC from ttb","Closed"].map(s => `<option value='${s}' ${s === task.status ? 'selected' : ''}>${s}</option>`).join('')}</select>`) +
+            field('📝 Remark', `<textarea class='editable-input border rounded px-2 w-full' onchange='updateTask(${task.rowIndex}, "remark", this.value)'>${task.remark}</textarea>`) +
+            field('📂 Workstream', `<select class='editable-input border rounded px-2' onchange='changeTaskWorkstream(${task.rowIndex}, this.value)'>${workstreamOrder.map(w => `<option value='${w}' ${w === task.workstream ? 'selected' : ''}>${w}</option>`).join('')}</select>`) +
+            `<div class='flex justify-end space-x-2 mt-2'>
+              <button onclick='moveTask(${task.rowIndex}, "up")' class='text-xs text-gray-600 hover:text-black'>⬆️</button>
+              <button onclick='moveTask(${task.rowIndex}, "down")' class='text-xs text-gray-600 hover:text-black'>⬇️</button>
+            </div>`;
+
+          taskContainer.appendChild(card);
+        });
+
+        section.append(header, taskContainer);
+        container.appendChild(section);
+      });
+    }
+
+    function updateTask(rowIndex, field, value) {
+      const task = Object.values(allData).flat().find(t => t.rowIndex == rowIndex);
+      if (task) {
+        task[field] = value;
+        google.script.run.updateTask(task);
+      }
+    }
+
+    function moveTask(rowIndex, direction) {
+      google.script.run.withSuccessHandler(loadData).moveTask(rowIndex, direction);
+    }
+
+    function changeTaskWorkstream(rowIndex, newStream) {
+      const task = Object.values(allData).flat().find(t => t.rowIndex == rowIndex);
+      if (task) {
+        task.workstream = newStream;
+        google.script.run.updateTask(task);
+        loadData();
+      }
+    }
+
+    function changeFilter(val) {
+      currentFilter = val;
+      renderWorkstreams();
+    }
+
+    window.addEventListener('DOMContentLoaded', loadData);
+  </script>
+</head>
+<body class="p-6 bg-blue-50 min-h-screen font-sans">
+  <h1 class="text-3xl font-extrabold mb-6 text-center text-blue-800">🗂️ Project Activity Management</h1>
+
+  <div class="flex flex-wrap justify-center gap-2 mb-6">
+    <button onclick="changeFilter('All')" class="px-4 py-1 bg-blue-500 text-white rounded-full">All</button>
+    <button onclick="changeFilter('In-Progress')" class="px-4 py-1 bg-yellow-400 text-white rounded-full">In-Progress</button>
+    <button onclick="changeFilter('Not Start')" class="px-4 py-1 bg-gray-400 text-white rounded-full">Not Start</button>
+    <button onclick="changeFilter('Complete')" class="px-4 py-1 bg-green-500 text-white rounded-full">Complete</button>
+    <button onclick="changeFilter('On hold')" class="px-4 py-1 bg-orange-400 text-white rounded-full">On hold</button>
+    <button onclick="changeFilter('TBC from ttb')" class="px-4 py-1 bg-purple-500 text-white rounded-full">TBC from ttb</button>
+    <button onclick="changeFilter('Closed')" class="px-4 py-1 bg-red-500 text-white rounded-full">Closed</button>
+  </div>
+
+  <div id="workstreams" class="space-y-6"></div>
+</body>
+</html>
