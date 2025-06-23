@@ -1,180 +1,437 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Project Activity Management</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
+    /* Custom style for better focus visibility on editable inputs */
     .editable-input:focus {
       outline: none;
-      border-color: #3b82f6;
-      box-shadow: 0 0 0 1px #3b82f6;
+      border-color: #3b82f6; /* Tailwind's blue-500 */
+      box-shadow: 0 0 0 2px #93c5fd; /* Tailwind's blue-300 */
     }
-    .status-pill {
-      @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold;
+    body {
+        font-family: 'Inter', sans-serif; /* A clean, modern font */
+    }
+    /* Adding a subtle transition for a smoother feel */
+    .card {
+        transition: all 0.2s ease-in-out;
     }
   </style>
+  <!-- Google Fonts for Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="p-4 sm:p-6 bg-gray-50">
+  <div class="max-w-7xl mx-auto">
+    <h1 class="text-3xl font-bold text-gray-800 mb-4">Project Activity Management</h1>
+    
+    <!-- Filter Buttons Section -->
+    <div class="mb-6 flex flex-wrap gap-2">
+      <button onclick="changeFilter('All')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">All</button>
+      <button onclick="changeFilter('In-Progress')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg shadow hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">In-Progress</button>
+      <button onclick="changeFilter('Not Start')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-yellow-500 rounded-lg shadow hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400">Not Start</button>
+      <button onclick="changeFilter('Complete')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-lg shadow hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">Complete</button>
+      <button onclick="changeFilter('On hold')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-lg shadow hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-400">On hold</button>
+      <button onclick="changeFilter('TBC from ttb')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg shadow hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">TBC from ttb</button>
+      <button onclick="changeFilter('Closed')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg shadow hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">Closed</button>
+    </div>
+    
+    <!-- Workstreams Container -->
+    <div id="workstreams" class="space-y-6">
+        <!-- Workstream sections will be dynamically inserted here -->
+    </div>
+  </div>
+
   <script>
+    // --- FIX: Mocking google.script.run for development/preview environments ---
+    if (typeof google === 'undefined') {
+      console.log("Setting up mock 'google.script.run' for development.");
+      let mockSuccessHandler = null;
+
+      const mockApi = {
+        getTaskData: () => {
+          const today = new Date();
+          const yesterday = new Date();
+          yesterday.setDate(today.getDate() - 1);
+          const tomorrow = new Date();
+          tomorrow.setDate(today.getDate() + 1);
+          const formatDateForInput = (date) => date.toISOString().split('T')[0];
+
+          const mockTasks = {
+            'Project Alpha': [
+              { task: 'Design Mockups', workstream: 'Project Alpha', owner: 'Alice', duedate: formatDateForInput(today), status: 'In-Progress', remark: 'Due today!', rowIndex: 2 },
+              { task: 'Develop Frontend', workstream: 'Project Alpha', owner: 'Bob', duedate: formatDateForInput(tomorrow), status: 'Not Start', remark: '', rowIndex: 3 },
+            ],
+            'Backend Services': [
+              { task: 'Setup Database', workstream: 'Backend Services', owner: 'Charlie', duedate: formatDateForInput(yesterday), status: 'In-Progress', remark: 'Overdue!', rowIndex: 4 },
+              { task: 'API Endpoint for Users', workstream: 'Backend Services', owner: 'Alice', duedate: '', status: 'On hold', remark: 'Waiting for specs', rowIndex: 5 },
+              { task: 'Deploy to Staging', workstream: 'Backend Services', owner: 'David', duedate: '', status: 'Complete', remark: 'Done last week', rowIndex: 6 },
+            ]
+          };
+          const mockOrder = ['Project Alpha', 'Backend Services'];
+          
+          if (mockSuccessHandler) {
+            // Simulate async call
+            setTimeout(() => mockSuccessHandler({ tasks: mockTasks, order: mockOrder }), 200);
+          }
+        },
+        addTask: (newTask) => {
+            newTask.rowIndex = Math.floor(Math.random() * 1000) + 10; // Random rowIndex
+            if (mockSuccessHandler) {
+                setTimeout(() => mockSuccessHandler(newTask), 100);
+            }
+        },
+        updateTask: (task) => {
+          console.log('Mock: Updating task', task);
+          if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100);
+        },
+        renameWorkstream: (oldName, newName) => {
+            console.log(`Mock: Renaming ${oldName} to ${newName}`);
+            if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100);
+        },
+        moveWorkstream: (workstream, direction) => {
+            console.log(`Mock: Moving ${workstream} ${direction}`);
+            if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100);
+        },
+        moveTask: (rowIndex, direction) => {
+            console.log(`Mock: Moving task ${rowIndex} ${direction}`);
+            if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100);
+        }
+      };
+      
+      window.google = {
+        script: {
+          run: new Proxy(mockApi, {
+            get(target, prop) {
+              if (prop === 'withSuccessHandler') {
+                return (handler) => {
+                  mockSuccessHandler = handler;
+                  // Return the proxy to allow chaining: google.script.run.withSuccessHandler().myFunction()
+                  return new Proxy(target, { get: (t, p) => t[p] });
+                };
+              }
+              return target[prop];
+            }
+          })
+        }
+      };
+    }
+    // --- END OF FIX ---
+
+
+    // --- GLOBAL STATE ---
     let allData = {};
-    let currentFilter = 'In-Progress';
+    let currentFilter = 'In-Progress'; // Default filter
     let workstreamOrder = [];
 
+    // --- DATA LOADING & INITIALIZATION ---
+    /**
+     * Loads initial task data from Google Apps Script backend.
+     */
     function loadData() {
+      // Show a simple loading indicator
+      document.getElementById('workstreams').innerHTML = '<div class="text-center p-8 text-gray-500">Loading tasks...</div>';
       google.script.run.withSuccessHandler(renderData).getTaskData();
     }
 
+    /**
+     * Callback function to receive and store data from the backend.
+     * @param {{tasks: Object, order: Array<string>}} data - The data object from the backend.
+     */
     function renderData({ tasks, order }) {
       allData = tasks;
       workstreamOrder = order;
-      renderWorkstreams();
+      renderWorkstreams(); // Re-render the entire view with new data
     }
-
-    function renderStatusPill(status) {
-      const map = {
-        'Not Start': 'bg-gray-200 text-gray-800',
-        'In-Progress': 'bg-yellow-200 text-yellow-800',
-        'Complete': 'bg-green-200 text-green-800',
-        'On hold': 'bg-orange-200 text-orange-800',
-        'TBC from ttb': 'bg-purple-200 text-purple-800',
-        'Closed': 'bg-red-200 text-red-800',
-      };
-      const css = map[status] || 'bg-gray-100 text-gray-700';
-      return `<span class="status-pill ${css}">${status}</span>`;
-    }
-
+    
+    // --- UI RENDERING ---
+    /**
+     * Renders all workstreams and their tasks based on the current filter.
+     */
     function renderWorkstreams() {
       const container = document.getElementById('workstreams');
-      container.innerHTML = '';
+      container.innerHTML = ''; // Clear previous content
 
       workstreamOrder.forEach(workstream => {
-        const taskList = (allData[workstream] || []).filter(t => currentFilter === 'All' || t.status === currentFilter);
+        // Create a copy and sort it by rowIndex to ensure order
+        const taskList = (allData[workstream] || [])
+            .slice()
+            .sort((a,b) => a.rowIndex - b.rowIndex)
+            .filter(t => currentFilter === 'All' || t.status === currentFilter);
+        
+        // Don't render the workstream section if it has no tasks for the current filter
         if (!taskList.length) return;
 
         const section = document.createElement('div');
-        section.className = 'mb-6 bg-white rounded-xl shadow-xl p-6 border border-blue-100';
+        section.className = 'mb-4 bg-white rounded-lg shadow-md overflow-hidden';
 
         const header = document.createElement('div');
-        header.className = 'bg-blue-50 px-4 py-2 rounded-lg flex justify-between items-center mb-4';
+        header.className = 'bg-gray-100 px-4 py-3 flex justify-between items-center border-b border-gray-200';
 
         const titleInput = document.createElement('input');
-        titleInput.className = 'font-bold text-lg bg-transparent border-b border-gray-300 editable-input';
+        titleInput.className = 'text-lg font-semibold bg-transparent border-b-2 border-transparent focus:border-blue-500 editable-input w-full mr-4';
         titleInput.value = workstream;
-        titleInput.addEventListener('change', () => {
-          google.script.run.renameWorkstream(workstream, titleInput.value);
-          loadData();
+        titleInput.addEventListener('change', (e) => {
+          const oldName = workstream;
+          const newName = e.target.value;
+          google.script.run.withSuccessHandler(() => {
+              // Optimistically update UI before reload for better UX
+              allData[newName] = allData[oldName];
+              delete allData[oldName];
+              workstreamOrder[workstreamOrder.indexOf(oldName)] = newName;
+              renderWorkstreams();
+          }).renameWorkstream(oldName, newName);
         });
 
         const controls = document.createElement('div');
-        controls.className = 'space-x-2';
-
-        const toggleBtn = document.createElement('button');
-        toggleBtn.textContent = '−';
-        toggleBtn.className = 'text-xl';
-        toggleBtn.onclick = () => {
-          taskContainer.classList.toggle('hidden');
-          toggleBtn.textContent = taskContainer.classList.contains('hidden') ? '+' : '−';
-        };
-
-        const upBtn = document.createElement('button');
-        upBtn.innerHTML = '⬆️';
-        upBtn.onclick = () => {
-          google.script.run.withSuccessHandler(loadData).moveWorkstream(workstream, 'up');
-        };
-
-        const downBtn = document.createElement('button');
-        downBtn.innerHTML = '⬇️';
-        downBtn.onclick = () => {
-          google.script.run.withSuccessHandler(loadData).moveWorkstream(workstream, 'down');
-        };
-
-        const addBtn = document.createElement('button');
-        addBtn.className = 'text-blue-600 text-sm hover:underline';
-        addBtn.textContent = '+ เพิ่ม Task';
-        addBtn.onclick = () => {
+        controls.className = 'flex items-center space-x-3 flex-shrink-0';
+        
+        const addTaskBtn = document.createElement('button');
+        addTaskBtn.className = 'text-blue-600 text-sm font-medium hover:underline';
+        addTaskBtn.textContent = '+ Add Task';
+        addTaskBtn.onclick = () => {
           const task = {
-            task: '', owner: '', duedate: '',
-            status: currentFilter === 'All' ? 'Not Start' : currentFilter,
+            task: 'New Task', owner: '', duedate: '', 
+            status: currentFilter === 'All' ? 'Not Start' : currentFilter, 
             remark: '', workstream
           };
-          google.script.run.withSuccessHandler(loadData).addTask(task);
+          google.script.run.withSuccessHandler(addNewTaskToDataAndRender).addTask(task);
         };
+        
+        // Movement and toggle buttons
+        const upBtn = createIconButton('⬆️', () => google.script.run.withSuccessHandler(loadData).moveWorkstream(workstream, 'up'));
+        const downBtn = createIconButton('⬇️', () => google.script.run.withSuccessHandler(loadData).moveWorkstream(workstream, 'down'));
+        const toggleBtn = createIconButton('−', (e) => {
+          const taskContainer = e.target.closest('.mb-4').querySelector('.task-container');
+          taskContainer.classList.toggle('hidden');
+          e.target.textContent = taskContainer.classList.contains('hidden') ? '+' : '−';
+        });
+        toggleBtn.className += ' text-2xl font-light';
 
-        controls.append(toggleBtn, upBtn, downBtn, addBtn);
-        header.append(titleInput, controls);
+
+        controls.appendChild(addTaskBtn);
+        controls.appendChild(upBtn);
+        controls.appendChild(downBtn);
+        controls.appendChild(toggleBtn);
+
+        header.appendChild(titleInput);
+        header.appendChild(controls);
 
         const taskContainer = document.createElement('div');
-        taskContainer.className = 'space-y-4';
+        taskContainer.className = 'p-4 space-y-4 task-container';
 
+        // --- TASK CARD RENDERING ---
         taskList.forEach((task) => {
+          // --- UPGRADE LOGIC: Determine card color based on due date ---
+          let cardBgClass = 'bg-gray-50'; // Default color
+          const today = new Date();
+          today.setHours(0, 0, 0, 0); 
+
+          if (task.duedate && task.status !== 'Complete' && task.status !== 'Closed') {
+            const dueDate = new Date(task.duedate);
+            if (!isNaN(dueDate.getTime())) {
+              if (dueDate < today) {
+                cardBgClass = 'bg-red-100 border-red-200'; // Overdue
+              } else if (dueDate.getTime() === today.getTime()) {
+                cardBgClass = 'bg-yellow-100 border-yellow-200'; // Due Today
+              }
+            }
+          }
+          // --- END OF UPGRADE LOGIC ---
+
           const card = document.createElement('div');
-          card.className = 'bg-blue-50 rounded-lg p-4 shadow flex flex-col gap-2';
+          card.className = `card border rounded-lg p-3 shadow-sm ${cardBgClass}`;
+          card.id = `task-card-${task.rowIndex}`; // Add an ID for easy access
 
-          const field = (label, html) =>
-            `<div class="text-sm"><strong>${label}:</strong> ${html}</div>`;
+          const createField = (label, element) => {
+            const container = document.createElement('div');
+            container.className = 'grid grid-cols-4 items-start gap-2 text-sm';
+            const labelEl = document.createElement('strong');
+            labelEl.className = 'col-span-1 text-gray-600 font-medium';
+            labelEl.textContent = label + ':';
+            const elementWrapper = document.createElement('div');
+            elementWrapper.className = 'col-span-3';
+            elementWrapper.appendChild(element);
+            container.appendChild(labelEl);
+            container.appendChild(elementWrapper);
+            return container;
+          };
 
-          card.innerHTML =
-            field('📌 Task', `<input class='editable-input border rounded px-2 w-full' value='${task.task}' onchange='updateTask(${task.rowIndex}, "task", this.value)'>`) +
-            field('👤 Owner', `<input class='editable-input border rounded px-2 w-full' value='${task.owner}' onchange='updateTask(${task.rowIndex}, "owner", this.value)'>`) +
-            field('📅 Due', `<input class='editable-input border rounded px-2' type='date' value='${task.duedate}' onchange='updateTask(${task.rowIndex}, "duedate", this.value)'>`) +
-            field('📍 Status', `<select class='editable-input border rounded px-2' onchange='updateTask(${task.rowIndex}, "status", this.value)'>${["Not Start","In-Progress","Complete","On hold","TBC from ttb","Closed"].map(s => `<option value='${s}' ${s === task.status ? 'selected' : ''}>${s}</option>`).join('')}</select>`) +
-            field('📝 Remark', `<textarea class='editable-input border rounded px-2 w-full' onchange='updateTask(${task.rowIndex}, "remark", this.value)'>${task.remark}</textarea>`) +
-            field('📂 Workstream', `<select class='editable-input border rounded px-2' onchange='changeTaskWorkstream(${task.rowIndex}, this.value)'>${workstreamOrder.map(w => `<option value='${w}' ${w === task.workstream ? 'selected' : ''}>${w}</option>`).join('')}</select>`) +
-            `<div class='flex justify-end space-x-2 mt-2'>
-              <button onclick='moveTask(${task.rowIndex}, "up")' class='text-xs text-gray-600 hover:text-black'>⬆️</button>
-              <button onclick='moveTask(${task.rowIndex}, "down")' class='text-xs text-gray-600 hover:text-black'>⬇️</button>
-            </div>`;
+          // Create input elements
+          const taskInput = createInput('text', task.task, (e) => updateTask(task.rowIndex, 'task', e.target.value));
+          const ownerInput = createInput('text', task.owner, (e) => updateTask(task.rowIndex, 'owner', e.target.value));
+          const dueDateInput = createInput('date', task.duedate, (e) => updateTask(task.rowIndex, 'duedate', e.target.value));
+          const remarkTextarea = createTextarea(task.remark, (e) => updateTask(task.rowIndex, 'remark', e.target.value));
+          
+          const statusSelect = createSelect(
+            ["Not Start","In-Progress","Complete","On hold","TBC from ttb","Closed"],
+            task.status,
+            (e) => updateTask(task.rowIndex, 'status', e.target.value)
+          );
+          
+          const workstreamSelect = createSelect(
+            workstreamOrder,
+            task.workstream,
+            (e) => changeTaskWorkstream(task.rowIndex, e.target.value)
+          );
+          
+          // Append fields to the card
+          card.appendChild(createField('Task', taskInput));
+          card.appendChild(createField('Owner', ownerInput));
+          card.appendChild(createField('Due', dueDateInput));
+          card.appendChild(createField('Status', statusSelect));
+          card.appendChild(createField('Remark', remarkTextarea));
+          card.appendChild(createField('Workstream', workstreamSelect));
 
+          // Task action buttons (move up/down)
+          const actionDiv = document.createElement('div');
+          actionDiv.className = 'flex justify-end space-x-2 mt-2';
+          actionDiv.appendChild(createIconButton('⬆️', () => moveTask(task.rowIndex, 'up')));
+          actionDiv.appendChild(createIconButton('⬇️', () => moveTask(task.rowIndex, 'down')));
+          card.appendChild(actionDiv);
+          
           taskContainer.appendChild(card);
         });
 
-        section.append(header, taskContainer);
+        section.appendChild(header);
+        section.appendChild(taskContainer);
         container.appendChild(section);
       });
+      
+      if(container.innerHTML === '') {
+          container.innerHTML = `<div class="text-center p-8 text-gray-500">No tasks found for the filter: <strong>${currentFilter}</strong></div>`;
+      }
     }
 
+    // --- HELPER FUNCTIONS FOR CREATING ELEMENTS ---
+    function createIconButton(text, onClick) {
+        const btn = document.createElement('button');
+        btn.textContent = text;
+        btn.className = 'text-xs text-gray-600 hover:text-black hover:scale-110 transition-transform';
+        btn.onclick = onClick;
+        return btn;
+    }
+    
+    function createInput(type, value, onChange) {
+        const input = document.createElement('input');
+        input.type = type;
+        input.className = 'editable-input border rounded px-2 py-1 w-full text-sm bg-white';
+        input.value = value;
+        input.onchange = onChange;
+        return input;
+    }
+    
+    function createTextarea(value, onChange) {
+        const textarea = document.createElement('textarea');
+        textarea.className = 'editable-input border rounded px-2 py-1 w-full text-sm bg-white';
+        textarea.rows = 2;
+        textarea.value = value;
+        textarea.onchange = onChange;
+        return textarea;
+    }
+
+    function createSelect(options, selectedValue, onChange) {
+        const select = document.createElement('select');
+        select.className = 'editable-input border rounded px-2 py-1 w-full text-sm bg-white';
+        select.onchange = onChange;
+        options.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt;
+            option.textContent = opt;
+            if (opt === selectedValue) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+        return select;
+    }
+
+
+    // --- DATA MANIPULATION FUNCTIONS ---
+    /**
+     * --- NEW FUNCTION ---
+     * Handles the successful addition of a task on the backend.
+     * It adds the new task to the local data object and re-renders the UI
+     * without needing a new server call to fetch all data.
+     * @param {Object} newTask - The new task object returned from the backend, including its rowIndex.
+     */
+    function addNewTaskToDataAndRender(newTask) {
+      // Add the new task to the local data cache.
+      if (!allData[newTask.workstream]) {
+        allData[newTask.workstream] = [];
+      }
+      allData[newTask.workstream].push(newTask);
+      
+      // Re-render the whole UI from local data. This is fast and feels instant.
+      renderWorkstreams();
+    }
+    
+    /**
+     * Updates a specific field of a task.
+     */
     function updateTask(rowIndex, field, value) {
+      // Find the task from the nested allData object
       const task = Object.values(allData).flat().find(t => t.rowIndex == rowIndex);
       if (task) {
         task[field] = value;
-        google.script.run.updateTask(task);
+        google.script.run.withSuccessHandler(() => {
+            console.log(`Task ${rowIndex} updated.`);
+            // If status or due date changes, re-render to update card color
+            if(field === 'status' || field === 'duedate'){
+                renderWorkstreams();
+            }
+        }).updateTask(task);
       }
     }
 
+    /**
+     * Moves a task up or down within its workstream.
+     */
     function moveTask(rowIndex, direction) {
       google.script.run.withSuccessHandler(loadData).moveTask(rowIndex, direction);
     }
-
+    
+    /**
+     * Changes the workstream of a task.
+     */
     function changeTaskWorkstream(rowIndex, newStream) {
       const task = Object.values(allData).flat().find(t => t.rowIndex == rowIndex);
       if (task) {
+        // Find old workstream to remove the task from local data
+        const oldStream = task.workstream;
         task.workstream = newStream;
-        google.script.run.updateTask(task);
-        loadData();
+
+        google.script.run.withSuccessHandler(() => {
+            // Optimistically update local data and re-render
+            const taskIndex = allData[oldStream].findIndex(t => t.rowIndex === rowIndex);
+            if(taskIndex > -1) {
+                const [movedTask] = allData[oldStream].splice(taskIndex, 1);
+                if(!allData[newStream]) {
+                    allData[newStream] = [];
+                }
+                allData[newStream].push(movedTask);
+                renderWorkstreams();
+            } else {
+                loadData(); // fallback to full reload if not found
+            }
+        }).updateTask(task);
       }
     }
-
+    
+    /**
+     * Changes the current filter and re-renders the UI.
+     */
     function changeFilter(val) {
       currentFilter = val;
-      renderWorkstreams();
+      renderWorkstreams(); // Re-render with the new filter
     }
 
+    // --- EVENT LISTENERS ---
     window.addEventListener('DOMContentLoaded', loadData);
   </script>
-</head>
-<body class="p-6 bg-blue-50 min-h-screen font-sans">
-  <h1 class="text-3xl font-extrabold mb-6 text-center text-blue-800">🗂️ Project Activity Management</h1>
-
-  <div class="flex flex-wrap justify-center gap-2 mb-6">
-    <button onclick="changeFilter('All')" class="px-4 py-1 bg-blue-500 text-white rounded-full">All</button>
-    <button onclick="changeFilter('In-Progress')" class="px-4 py-1 bg-yellow-400 text-white rounded-full">In-Progress</button>
-    <button onclick="changeFilter('Not Start')" class="px-4 py-1 bg-gray-400 text-white rounded-full">Not Start</button>
-    <button onclick="changeFilter('Complete')" class="px-4 py-1 bg-green-500 text-white rounded-full">Complete</button>
-    <button onclick="changeFilter('On hold')" class="px-4 py-1 bg-orange-400 text-white rounded-full">On hold</button>
-    <button onclick="changeFilter('TBC from ttb')" class="px-4 py-1 bg-purple-500 text-white rounded-full">TBC from ttb</button>
-    <button onclick="changeFilter('Closed')" class="px-4 py-1 bg-red-500 text-white rounded-full">Closed</button>
-  </div>
-
-  <div id="workstreams" class="space-y-6"></div>
 </body>
 </html>
