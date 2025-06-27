@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Project Activity Management</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Quill Editor CDN -->
+  <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+  <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
   <style>
     .editable-input:focus {
       outline: none;
@@ -118,6 +121,15 @@
       box-shadow: 0 2px 8px 0 rgba(16,37,60,.04);
       max-width: 600px;
     }
+    .quill-card-remark .ql-container {
+      min-height: 38px !important;
+      border-radius: 0.5rem;
+      background: white;
+      font-size: 1em;
+    }
+    .quill-card-remark .ql-toolbar {
+      border-radius: 0.5rem 0.5rem 0 0;
+    }
   </style>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -126,7 +138,6 @@
 <body class="p-4 sm:p-6 bg-gray-50">
   <div class="max-w-7xl mx-auto">
     <h1 class="text-3xl font-bold text-gray-800 mb-4">Project Activity Management</h1>
-
     <div class="flex items-center mb-4">
       <button class="toggle-btn" id="toggleViewBtn" onclick="toggleView()" data-mode="list" title="Switch View">
         <span id="toggleViewIcon" class="mr-2">🗂️</span>
@@ -137,7 +148,6 @@
         <button id="addWsBtn" class="px-4 py-1 bg-blue-600 text-white rounded font-semibold shadow hover:bg-blue-700" onclick="addWorkstreamUI()">Add Workstream</button>
       </div>
     </div>
-
     <div class="mb-6 flex flex-wrap gap-2">
       <button onclick="changeFilter('All')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">All</button>
       <button onclick="changeFilter('In-Progress')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg shadow hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">In-Progress</button>
@@ -150,14 +160,70 @@
     <div id="workstreams"></div>
   </div>
   <script>
-    // ... mock google.script.run section as in your previous code, or remove if running on Apps Script ...
-    // ... (leave as-is or ask if you want the mock code for local HTML-only testing) ...
+    // --- MOCK google.script.run for local HTML development ---
+    // ... REMOVE this block if you use in Apps Script environment ...
+    if (typeof google === 'undefined') {
+      let mockSuccessHandler = null;
+      const mockApi = {
+        getTaskData: () => {
+          const today = new Date();
+          const formatDateForInput = (date) => date.toISOString().split('T')[0];
+          const mockTasks = {
+            'Project Alpha': [
+              { number: 1, task: 'Design Mockups', workstream: 'Project Alpha', owner: 'Alice', duedate: formatDateForInput(today), status: 'In-Progress', remark: '<b>Due today!</b>', rowIndex: 2 },
+              { number: 2, task: 'Develop Frontend', workstream: 'Project Alpha', owner: 'Bob', duedate: '', status: 'Not Start', remark: '', rowIndex: 3 },
+              { number: 5, task: 'Test Feature', workstream: 'Project Alpha', owner: 'Ken', duedate: '', status: 'In-Progress', remark: '', rowIndex: 4 },
+            ],
+            'Backend Services': [
+              { number: 3, task: 'Setup Database', workstream: 'Backend Services', owner: 'Charlie', duedate: '', status: 'On hold', remark: '<s>Waiting for specs</s>', rowIndex: 5 },
+              { number: 4, task: 'Deploy to Staging', workstream: 'Backend Services', owner: 'David', duedate: '', status: 'Complete', remark: 'Done last week', rowIndex: 6 },
+              { number: 6, task: 'API Integration', workstream: 'Backend Services', owner: 'Zoe', duedate: '', status: 'In-Progress', remark: '', rowIndex: 7 },
+            ]
+          };
+          const mockOrder = ['Project Alpha', 'Backend Services'];
+          if (mockSuccessHandler) setTimeout(() => mockSuccessHandler({ tasks: mockTasks, order: mockOrder }), 200);
+        },
+        addTask: (newTask) => {
+          newTask.rowIndex = Math.floor(Math.random() * 1000) + 10;
+          newTask.number = Math.floor(Math.random() * 100) + 10;
+          if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(newTask), 100);
+        },
+        updateTask: (task) => { if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100); },
+        renameWorkstream: (oldName, newName) => { if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100); },
+        moveWorkstream: (workstream, direction) => { if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100); },
+        moveWorkstreamLR: (workstream, direction) => { if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100); },
+        addWorkstream: (wsName, status) => {
+          if (mockSuccessHandler) setTimeout(() => mockSuccessHandler({
+            workstream: wsName,
+            task: { number: Math.floor(Math.random() * 100) + 10, task: "New Task", workstream: wsName, owner: '', duedate: '', status, remark: '', rowIndex: Math.floor(Math.random() * 1000) + 10 }
+          }), 100);
+        },
+        deleteTask: (rowIndex) => { if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100); },
+        reindexAll: () => { if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100); },
+      };
+      window.google = {
+        script: {
+          run: new Proxy(mockApi, {
+            get(target, prop) {
+              if (prop === 'withSuccessHandler') {
+                return (handler) => {
+                  mockSuccessHandler = handler;
+                  return new Proxy(target, { get: (t, p) => t[p] });
+                };
+              }
+              return target[prop];
+            }
+          })
+        }
+      };
+    }
+    // --- END MOCK ---
 
     let allData = {};
     let currentFilter = 'In-Progress';
     let workstreamOrder = [];
     let lastMoveAnimation = { workstream: null, from: null, to: null };
-    let currentView = 'list'; // or 'kanban'
+    let currentView = 'list';
 
     function loadData() {
       document.getElementById('workstreams').innerHTML = '<div class="text-center p-8 text-gray-500">Loading tasks...</div>';
@@ -236,7 +302,6 @@
             }).renameWorkstream(oldName, newName);
           });
 
-          // + Add Task button (Kanban)
           const addTaskBtn = document.createElement('button');
           addTaskBtn.className = 'ml-2 text-blue-600 text-xs font-medium hover:underline bg-blue-100 rounded-lg px-2 py-1';
           addTaskBtn.textContent = '+ Add Task';
@@ -381,7 +446,9 @@
       const taskInput = createInput('text', task.task, (e) => updateTask(task.rowIndex, 'task', e.target.value));
       const ownerInput = createInput('text', task.owner, (e) => updateTask(task.rowIndex, 'owner', e.target.value));
       const dueDateInput = createInput('date', task.duedate, (e) => updateTask(task.rowIndex, 'duedate', e.target.value));
-      const remarkTextarea = createTextarea(task.remark, (e) => updateTask(task.rowIndex, 'remark', e.target.value));
+      // === QUILL RICH REMARK FIELD ===
+      const remarkQuill = createQuillRemarkEditor(task, (e) => updateTask(task.rowIndex, 'remark', e.target.value));
+      // === END QUILL ===
       const statusSelect = createSelect(
         ["Not Start","In-Progress","Complete","On hold","TBC from ttb","Closed","Open"],
         task.status,
@@ -396,14 +463,12 @@
       card.appendChild(createField('Owner', ownerInput));
       card.appendChild(createField('Due', dueDateInput));
       card.appendChild(createField('Status', statusSelect));
-      card.appendChild(createField('Remark', remarkTextarea));
+      card.appendChild(createField('Remark', remarkQuill));
       card.appendChild(createField('Workstream', workstreamSelect));
-      // Up/Down arrows within workstream/same status
       const actionDiv = document.createElement('div');
       actionDiv.className = 'flex justify-end space-x-2 mt-2';
       actionDiv.appendChild(createIconButton('⬆️', () => moveTask(task.rowIndex, 'up', workstream, task.status)));
       actionDiv.appendChild(createIconButton('⬇️', () => moveTask(task.rowIndex, 'down', workstream, task.status)));
-      // Delete button
       const delBtn = document.createElement('button');
       delBtn.textContent = '🗑️';
       delBtn.className = 'delete-btn';
@@ -415,6 +480,72 @@
       card.appendChild(actionDiv);
       return card;
     }
+
+    // ---- QUILL RICH REMARK FIELD ----
+    function createQuillRemarkEditor(task, onChange) {
+  // Wrapper for Quill editor and toolbar
+  const wrapper = document.createElement('div');
+  wrapper.style.minWidth = '180px';
+  wrapper.style.width = '100%';
+  wrapper.className = 'quill-card-remark';
+
+  // Unique id for editor and toolbar
+  const idSuffix = Math.random().toString(36).substr(2, 8);
+  const toolbarId = 'quill-toolbar-' + idSuffix;
+  const editorId = 'quill-remark-' + idSuffix;
+
+  // Toolbar HTML (visible!)
+  const toolbarDiv = document.createElement('div');
+  toolbarDiv.id = toolbarId;
+  toolbarDiv.innerHTML = `
+    <span class="ql-formats">
+      <button class="ql-bold"></button>
+      <button class="ql-italic"></button>
+      <button class="ql-underline"></button>
+      <button class="ql-strike"></button>
+    </span>
+    <span class="ql-formats">
+      <select class="ql-size"></select>
+    </span>
+    <span class="ql-formats">
+      <button class="ql-list" value="ordered"></button>
+      <button class="ql-list" value="bullet"></button>
+    </span>
+  `;
+  wrapper.appendChild(toolbarDiv);
+
+  // Editor div
+  const editorDiv = document.createElement('div');
+  editorDiv.style.minHeight = '38px';
+  editorDiv.style.width = '100%';
+  editorDiv.id = editorId;
+  wrapper.appendChild(editorDiv);
+
+  setTimeout(() => {
+    const quill = new Quill('#' + editorId, {
+      theme: 'snow',
+      placeholder: 'Enter remark...',
+      modules: {
+        toolbar: '#' + toolbarId
+      }
+    });
+    if (task.remark) quill.root.innerHTML = task.remark;
+    quill.on('text-change', function() {
+      onChange({ target: { value: quill.root.innerHTML } });
+      quill.root.style.height = "auto";
+      quill.root.style.height = (quill.root.scrollHeight) + "px";
+    });
+    setTimeout(() => {
+      quill.root.style.height = "auto";
+      quill.root.style.height = (quill.root.scrollHeight) + "px";
+    }, 50);
+  }, 0);
+
+  return wrapper;
+}
+
+    // ---- END QUILL ----
+
     function createIconButton(text, onClick) {
       const btn = document.createElement('button');
       btn.textContent = text;
@@ -430,14 +561,6 @@
       input.onchange = onChange;
       return input;
     }
-    function createTextarea(value, onChange) {
-      const textarea = document.createElement('textarea');
-      textarea.className = 'editable-input border rounded px-2 py-1 w-full text-sm bg-white';
-      textarea.rows = 2;
-      textarea.value = value;
-      textarea.onchange = onChange;
-      return textarea;
-    }
     function createSelect(options, selectedValue, onChange) {
       const select = document.createElement('select');
       select.className = 'editable-input border rounded px-2 py-1 w-full text-sm bg-white';
@@ -451,7 +574,6 @@
       });
       return select;
     }
-
     function addNewTaskToDataAndRender(newTask) {
       if (!allData[newTask.workstream]) allData[newTask.workstream] = [];
       allData[newTask.workstream].push(newTask);
