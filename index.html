@@ -22,6 +22,102 @@
       z-index: 10;
       position: relative;
     }
+    .kanban-board {
+      overflow-x: auto;
+      display: flex;
+      gap: 2rem;
+      padding-bottom: 1rem;
+    }
+    .kanban-col {
+      min-width: 340px;
+      max-width: 340px;
+      flex: 0 0 340px;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background: #f4f7fa;
+      border-radius: 1rem;
+      box-shadow: 0 2px 8px 0 rgba(0,0,0,0.04);
+      border: 1px solid #e5e7eb;
+      padding-bottom: 1rem;
+    }
+    @media (max-width: 480px) {
+      .kanban-col {
+        min-width: 94vw;
+        max-width: 98vw;
+      }
+    }
+    .kanban-tasks {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      padding: 0 0.25rem;
+    }
+    .kanban-title {
+      font-size: 1.1rem;
+      font-weight: bold;
+      padding: 1rem 1rem 0.5rem 1rem;
+      color: #2563eb;
+      border-bottom: 2px solid #2563eb22;
+      background: #e0e7ff;
+      border-radius: 1rem 1rem 0 0;
+      margin-bottom: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .toggle-btn {
+      transition: all 0.2s;
+      border-radius: 9999px;
+      font-weight: 500;
+      font-size: 1rem;
+      padding: 0.3rem 1.3rem 0.3rem 2.2rem;
+      background: linear-gradient(90deg,#e0e7ff 60%,#a5b4fc 100%);
+      color: #1e293b;
+      position: relative;
+      border: 1px solid #6366f1;
+      margin-bottom: 1rem;
+      margin-right: 1rem;
+      box-shadow: 0 2px 8px 0 rgba(99,102,241,.07);
+    }
+    .toggle-btn::before {
+      content: "";
+      position: absolute;
+      left: 0.5rem; top: 0.32rem;
+      width: 1.5rem; height: 1.5rem;
+      border-radius: 50%;
+      background: #6366f1;
+      transition: background 0.2s;
+    }
+    .toggle-btn[data-mode="kanban"]::before { background: #f59e42; }
+    .delete-btn {
+      color: #b91c1c;
+      background: #fee2e2;
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+      font-size: 1.1em;
+      margin-left: 0.7rem;
+      font-weight: bold;
+      cursor: pointer;
+      border: none;
+      transition: background 0.15s, color 0.15s;
+    }
+    .delete-btn:hover {
+      background: #f87171;
+      color: #fff;
+    }
+    .add-ws-bar {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 0.75rem;
+      display: flex;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      padding: 1rem 1.5rem;
+      gap: 1rem;
+      box-shadow: 0 2px 8px 0 rgba(16,37,60,.04);
+      max-width: 600px;
+    }
   </style>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,8 +126,18 @@
 <body class="p-4 sm:p-6 bg-gray-50">
   <div class="max-w-7xl mx-auto">
     <h1 class="text-3xl font-bold text-gray-800 mb-4">Project Activity Management</h1>
-    
-    <!-- Filter Buttons Section -->
+
+    <div class="flex items-center mb-4">
+      <button class="toggle-btn" id="toggleViewBtn" onclick="toggleView()" data-mode="list" title="Switch View">
+        <span id="toggleViewIcon" class="mr-2">🗂️</span>
+        <span id="toggleViewLabel">Kanban View</span>
+      </button>
+      <div class="add-ws-bar">
+        <input id="wsInput" type="text" placeholder="New workstream name" class="border px-3 py-1 rounded text-base bg-white focus:border-blue-400 w-48 mr-3"/>
+        <button id="addWsBtn" class="px-4 py-1 bg-blue-600 text-white rounded font-semibold shadow hover:bg-blue-700" onclick="addWorkstreamUI()">Add Workstream</button>
+      </div>
+    </div>
+
     <div class="mb-6 flex flex-wrap gap-2">
       <button onclick="changeFilter('All')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">All</button>
       <button onclick="changeFilter('In-Progress')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg shadow hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">In-Progress</button>
@@ -41,65 +147,17 @@
       <button onclick="changeFilter('TBC from ttb')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg shadow hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">TBC from ttb</button>
       <button onclick="changeFilter('Closed')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg shadow hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">Closed</button>
     </div>
-    
-    <!-- Workstreams Container -->
-    <div id="workstreams" class="space-y-6"></div>
+    <div id="workstreams"></div>
   </div>
-
   <script>
-    // --- Mock google.script.run for development/preview environments ---
-    if (typeof google === 'undefined') {
-      let mockSuccessHandler = null;
-      const mockApi = {
-        getTaskData: () => {
-          const today = new Date();
-          const formatDateForInput = (date) => date.toISOString().split('T')[0];
-          const mockTasks = {
-            'Project Alpha': [
-              { number: 1, task: 'Design Mockups', workstream: 'Project Alpha', owner: 'Alice', duedate: formatDateForInput(today), status: 'In-Progress', remark: 'Due today!', rowIndex: 2 },
-              { number: 2, task: 'Develop Frontend', workstream: 'Project Alpha', owner: 'Bob', duedate: '', status: 'Not Start', remark: '', rowIndex: 3 },
-            ],
-            'Backend Services': [
-              { number: 3, task: 'Setup Database', workstream: 'Backend Services', owner: 'Charlie', duedate: '', status: 'On hold', remark: 'Waiting for specs', rowIndex: 4 },
-              { number: 4, task: 'Deploy to Staging', workstream: 'Backend Services', owner: 'David', duedate: '', status: 'Complete', remark: 'Done last week', rowIndex: 6 },
-            ]
-          };
-          const mockOrder = ['Project Alpha', 'Backend Services'];
-          if (mockSuccessHandler) setTimeout(() => mockSuccessHandler({ tasks: mockTasks, order: mockOrder }), 200);
-        },
-        addTask: (newTask) => {
-          newTask.rowIndex = Math.floor(Math.random() * 1000) + 10;
-          newTask.number = Math.floor(Math.random() * 100) + 10;
-          if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(newTask), 100);
-        },
-        updateTask: (task) => { if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100); },
-        renameWorkstream: (oldName, newName) => { if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100); },
-        moveWorkstream: (workstream, direction) => { if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100); },
-        moveTask: (rowIndex, direction) => { if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100); }
-      };
-      window.google = {
-        script: {
-          run: new Proxy(mockApi, {
-            get(target, prop) {
-              if (prop === 'withSuccessHandler') {
-                return (handler) => {
-                  mockSuccessHandler = handler;
-                  return new Proxy(target, { get: (t, p) => t[p] });
-                };
-              }
-              return target[prop];
-            }
-          })
-        }
-      };
-    }
-    // --- END OF MOCK ---
+    // ... mock google.script.run section as in your previous code, or remove if running on Apps Script ...
+    // ... (leave as-is or ask if you want the mock code for local HTML-only testing) ...
 
-    // --- GLOBAL STATE ---
     let allData = {};
-    let currentFilter = 'In-Progress'; // Default filter
+    let currentFilter = 'In-Progress';
     let workstreamOrder = [];
     let lastMoveAnimation = { workstream: null, from: null, to: null };
+    let currentView = 'list'; // or 'kanban'
 
     function loadData() {
       document.getElementById('workstreams').innerHTML = '<div class="text-center p-8 text-gray-500">Loading tasks...</div>';
@@ -110,180 +168,253 @@
       workstreamOrder = order;
       renderWorkstreams();
     }
-
+    function toggleView() {
+      currentView = currentView === 'list' ? 'kanban' : 'list';
+      const btn = document.getElementById('toggleViewBtn');
+      const icon = document.getElementById('toggleViewIcon');
+      const label = document.getElementById('toggleViewLabel');
+      btn.dataset.mode = currentView;
+      if (currentView === 'list') {
+        icon.textContent = '🗂️';
+        label.textContent = 'Kanban View';
+      } else {
+        icon.textContent = '📝';
+        label.textContent = 'List View';
+      }
+      renderWorkstreams();
+    }
+    function addWorkstreamUI() {
+      const wsName = document.getElementById('wsInput').value.trim();
+      if (!wsName) return;
+      const status = currentFilter === 'All' ? 'Open' : currentFilter;
+      google.script.run.withSuccessHandler(({ workstream, task }) => {
+        if (!workstreamOrder.includes(workstream)) workstreamOrder.push(workstream);
+        allData[workstream] = [task];
+        document.getElementById('wsInput').value = '';
+        renderWorkstreams();
+      }).addWorkstream(wsName, status);
+    }
     function renderWorkstreams() {
       const container = document.getElementById('workstreams');
       container.innerHTML = '';
-      workstreamOrder.forEach((workstream) => {
-        const taskList = (allData[workstream] || [])
-          .slice()
-          .sort((a, b) => (a.number || 0) - (b.number || 0))
-          .filter(t => currentFilter === 'All' || t.status === currentFilter);
-        if (!taskList.length) return;
+      if (currentView === 'kanban') {
+        container.className = 'kanban-board';
+        workstreamOrder.forEach((workstream, wsIdx) => {
+          const taskList = (allData[workstream] || [])
+            .slice()
+            .sort((a, b) => (a.number || 0) - (b.number || 0))
+            .filter(t => currentFilter === 'All' || t.status === currentFilter);
 
-        const section = document.createElement('div');
-        section.className = 'mb-4 bg-white rounded-lg shadow-md overflow-hidden';
+          const col = document.createElement('div');
+          col.className = 'kanban-col';
 
-        const header = document.createElement('div');
-        header.className = 'bg-gray-100 px-4 py-3 flex justify-between items-center border-b border-gray-200';
+          // Kanban header with left/right and + Add Task
+          const titleDiv = document.createElement('div');
+          titleDiv.className = 'kanban-title';
 
-        const titleInput = document.createElement('input');
-        titleInput.className = 'text-lg font-semibold bg-transparent border-b-2 border-transparent focus:border-blue-500 editable-input w-full mr-4';
-        titleInput.value = workstream;
-        titleInput.addEventListener('change', (e) => {
-          const oldName = workstream;
-          const newName = e.target.value;
-          if (!newName.trim() || newName === oldName) return;
-          google.script.run.withSuccessHandler(() => {
-            allData[newName] = allData[oldName];
-            delete allData[oldName];
-            const idx = workstreamOrder.indexOf(oldName);
-            if (idx > -1) workstreamOrder[idx] = newName;
-            renderWorkstreams();
-          }).renameWorkstream(oldName, newName);
-        });
+          const leftBtn = createIconButton('⬅️', () => moveWorkstreamLR(workstream, 'left'));
+          leftBtn.disabled = wsIdx === 0;
+          leftBtn.style.opacity = wsIdx === 0 ? 0.4 : 1;
 
-        const controls = document.createElement('div');
-        controls.className = 'flex items-center space-x-3 flex-shrink-0';
+          const rightBtn = createIconButton('➡️', () => moveWorkstreamLR(workstream, 'right'));
+          rightBtn.disabled = wsIdx === workstreamOrder.length - 1;
+          rightBtn.style.opacity = wsIdx === workstreamOrder.length - 1 ? 0.4 : 1;
 
-        const addTaskBtn = document.createElement('button');
-        addTaskBtn.className = 'text-blue-600 text-sm font-medium hover:underline';
-        addTaskBtn.textContent = '+ Add Task';
-        addTaskBtn.onclick = () => {
-          const task = {
-            task: 'New Task', owner: '', duedate: '', 
-            status: currentFilter === 'All' ? 'Not Start' : currentFilter, 
-            remark: '', workstream
-          };
-          google.script.run.withSuccessHandler(addNewTaskToDataAndRender).addTask(task);
-        };
+          const titleInput = document.createElement('input');
+          titleInput.className = 'bg-transparent border-b-2 border-transparent focus:border-blue-500 editable-input w-full font-semibold text-blue-900';
+          titleInput.value = workstream;
+          titleInput.addEventListener('change', (e) => {
+            const oldName = workstream;
+            const newName = e.target.value;
+            if (!newName.trim() || newName === oldName) return;
+            google.script.run.withSuccessHandler(() => {
+              allData[newName] = allData[oldName];
+              delete allData[oldName];
+              const idx = workstreamOrder.indexOf(oldName);
+              if (idx > -1) workstreamOrder[idx] = newName;
+              renderWorkstreams();
+            }).renameWorkstream(oldName, newName);
+          });
 
-        const upBtn = createIconButton('⬆️', () => {
-          const idx = workstreamOrder.indexOf(workstream);
-          if (idx > 0) {
-            [workstreamOrder[idx-1], workstreamOrder[idx]] = [workstreamOrder[idx], workstreamOrder[idx-1]];
-            renderWorkstreams();
-            google.script.run.withSuccessHandler(() => {}).moveWorkstream(workstream, 'up');
-          }
-        });
-        const downBtn = createIconButton('⬇️', () => {
-          const idx = workstreamOrder.indexOf(workstream);
-          if (idx > -1 && idx < workstreamOrder.length - 1) {
-            [workstreamOrder[idx], workstreamOrder[idx+1]] = [workstreamOrder[idx+1], workstreamOrder[idx]];
-            renderWorkstreams();
-            google.script.run.withSuccessHandler(() => {}).moveWorkstream(workstream, 'down');
-          }
-        });
-        const toggleBtn = createIconButton('−', (e) => {
-          const taskContainer = e.target.closest('.mb-4').querySelector('.task-container');
-          taskContainer.classList.toggle('hidden');
-          e.target.textContent = taskContainer.classList.contains('hidden') ? '+' : '−';
-        });
-        toggleBtn.className += ' text-2xl font-light';
-
-        controls.appendChild(addTaskBtn);
-        controls.appendChild(upBtn);
-        controls.appendChild(downBtn);
-        controls.appendChild(toggleBtn);
-
-        header.appendChild(titleInput);
-        header.appendChild(controls);
-
-        const taskContainer = document.createElement('div');
-        taskContainer.className = 'p-4 space-y-4 task-container';
-
-        taskList.forEach((task, i) => {
-          let cardBgClass = 'bg-gray-50';
-          const today = new Date(); today.setHours(0, 0, 0, 0);
-          if (task.duedate && task.status !== 'Complete' && task.status !== 'Closed') {
-            const dueDate = new Date(task.duedate);
-            if (!isNaN(dueDate.getTime())) {
-              if (dueDate < today) {
-                cardBgClass = 'bg-red-100 border-red-200';
-              } else if (dueDate.getTime() === today.getTime()) {
-                cardBgClass = 'bg-yellow-100 border-yellow-200';
-              }
-            }
-          }
-          const card = document.createElement('div');
-          card.className = `card border rounded-lg p-3 shadow-sm ${cardBgClass}`;
-          card.id = `task-card-${task.rowIndex}`;
-
-          // Animate card movement
-          if (
-            lastMoveAnimation.workstream === workstream &&
-            (i === lastMoveAnimation.from || i === lastMoveAnimation.to)
-          ) {
-            card.classList.add('moving');
-            card.style.transform =
-              i === lastMoveAnimation.from
-                ? `translateY(${60 * (lastMoveAnimation.to - lastMoveAnimation.from)}px)`
-                : `translateY(${-60 * (lastMoveAnimation.to - lastMoveAnimation.from)}px)`;
-            setTimeout(() => {
-              card.style.transform = '';
-            }, 20);
-            setTimeout(() => {
-              card.classList.remove('moving');
-            }, 370);
-          }
-
-          // Field creation
-          const createField = (label, element) => {
-            const container = document.createElement('div');
-            container.className = 'grid grid-cols-4 items-start gap-2 text-sm';
-            const labelEl = document.createElement('strong');
-            labelEl.className = 'col-span-1 text-gray-600 font-medium';
-            labelEl.textContent = label + ':';
-            const elementWrapper = document.createElement('div');
-            elementWrapper.className = 'col-span-3';
-            elementWrapper.appendChild(element);
-            container.appendChild(labelEl);
-            container.appendChild(elementWrapper);
-            return container;
+          // + Add Task button (Kanban)
+          const addTaskBtn = document.createElement('button');
+          addTaskBtn.className = 'ml-2 text-blue-600 text-xs font-medium hover:underline bg-blue-100 rounded-lg px-2 py-1';
+          addTaskBtn.textContent = '+ Add Task';
+          addTaskBtn.onclick = () => {
+            const task = {
+              task: 'New Task', owner: '', duedate: '', 
+              status: currentFilter === 'All' ? 'Open' : currentFilter, 
+              remark: '', workstream
+            };
+            google.script.run.withSuccessHandler(addNewTaskToDataAndRender).addTask(task);
           };
 
-          const taskInput = createInput('text', task.task, (e) => updateTask(task.rowIndex, 'task', e.target.value));
-          const ownerInput = createInput('text', task.owner, (e) => updateTask(task.rowIndex, 'owner', e.target.value));
-          const dueDateInput = createInput('date', task.duedate, (e) => updateTask(task.rowIndex, 'duedate', e.target.value));
-          const remarkTextarea = createTextarea(task.remark, (e) => updateTask(task.rowIndex, 'remark', e.target.value));
-          
-          const statusSelect = createSelect(
-            ["Not Start","In-Progress","Complete","On hold","TBC from ttb","Closed"],
-            task.status,
-            (e) => updateTask(task.rowIndex, 'status', e.target.value)
-          );
-          
-          const workstreamSelect = createSelect(
-            workstreamOrder,
-            task.workstream,
-            (e) => changeTaskWorkstream(task.rowIndex, e.target.value)
-          );
+          titleDiv.appendChild(leftBtn);
+          titleDiv.appendChild(titleInput);
+          titleDiv.appendChild(addTaskBtn);
+          titleDiv.appendChild(rightBtn);
 
-          card.appendChild(createField('Task', taskInput));
-          card.appendChild(createField('Owner', ownerInput));
-          card.appendChild(createField('Due', dueDateInput));
-          card.appendChild(createField('Status', statusSelect));
-          card.appendChild(createField('Remark', remarkTextarea));
-          card.appendChild(createField('Workstream', workstreamSelect));
+          col.appendChild(titleDiv);
 
-          const actionDiv = document.createElement('div');
-          actionDiv.className = 'flex justify-end space-x-2 mt-2';
-          actionDiv.appendChild(createIconButton('⬆️', () => moveTask(task.rowIndex, 'up', workstream, task.status)));
-          actionDiv.appendChild(createIconButton('⬇️', () => moveTask(task.rowIndex, 'down', workstream, task.status)));
-          card.appendChild(actionDiv);
-
-          taskContainer.appendChild(card);
+          // Tasks in column
+          const taskStack = document.createElement('div');
+          taskStack.className = 'kanban-tasks flex flex-col gap-3 pt-2';
+          taskList.forEach((task, i) => {
+            taskStack.appendChild(createTaskCard(task, i, workstream, taskList));
+          });
+          col.appendChild(taskStack);
+          container.appendChild(col);
         });
+      } else {
+        container.className = '';
+        workstreamOrder.forEach((workstream, wsIdx) => {
+          const taskList = (allData[workstream] || [])
+            .slice()
+            .sort((a, b) => (a.number || 0) - (b.number || 0))
+            .filter(t => currentFilter === 'All' || t.status === currentFilter);
+          if (!taskList.length) return;
+          const section = document.createElement('div');
+          section.className = 'mb-4 bg-white rounded-lg shadow-md overflow-hidden';
 
-        section.appendChild(header);
-        section.appendChild(taskContainer);
-        container.appendChild(section);
-      });
+          // List header with up/down and + Add Task
+          const header = document.createElement('div');
+          header.className = 'bg-gray-100 px-4 py-3 flex justify-between items-center border-b border-gray-200';
+
+          const titleInput = document.createElement('input');
+          titleInput.className = 'text-lg font-semibold bg-transparent border-b-2 border-transparent focus:border-blue-500 editable-input w-full mr-4';
+          titleInput.value = workstream;
+          titleInput.addEventListener('change', (e) => {
+            const oldName = workstream;
+            const newName = e.target.value;
+            if (!newName.trim() || newName === oldName) return;
+            google.script.run.withSuccessHandler(() => {
+              allData[newName] = allData[oldName];
+              delete allData[oldName];
+              const idx = workstreamOrder.indexOf(oldName);
+              if (idx > -1) workstreamOrder[idx] = newName;
+              renderWorkstreams();
+            }).renameWorkstream(oldName, newName);
+          });
+
+          const upBtn = createIconButton('⬆️', () => moveWorkstream(workstream, 'up'));
+          upBtn.disabled = wsIdx === 0;
+          upBtn.style.opacity = wsIdx === 0 ? 0.4 : 1;
+          const downBtn = createIconButton('⬇️', () => moveWorkstream(workstream, 'down'));
+          downBtn.disabled = wsIdx === workstreamOrder.length - 1;
+          downBtn.style.opacity = wsIdx === workstreamOrder.length - 1 ? 0.4 : 1;
+
+          const addTaskBtn = document.createElement('button');
+          addTaskBtn.className = 'ml-2 text-blue-600 text-xs font-medium hover:underline bg-blue-100 rounded-lg px-2 py-1';
+          addTaskBtn.textContent = '+ Add Task';
+          addTaskBtn.onclick = () => {
+            const task = {
+              task: 'New Task', owner: '', duedate: '', 
+              status: currentFilter === 'All' ? 'Open' : currentFilter, 
+              remark: '', workstream
+            };
+            google.script.run.withSuccessHandler(addNewTaskToDataAndRender).addTask(task);
+          };
+
+          const controls = document.createElement('div');
+          controls.className = 'flex items-center space-x-2 flex-shrink-0';
+          controls.appendChild(addTaskBtn);
+          controls.appendChild(upBtn);
+          controls.appendChild(downBtn);
+
+          header.appendChild(titleInput);
+          header.appendChild(controls);
+
+          const taskContainer = document.createElement('div');
+          taskContainer.className = 'p-4 space-y-4 task-container';
+          taskList.forEach((task, i) => {
+            taskContainer.appendChild(createTaskCard(task, i, workstream, taskList));
+          });
+
+          section.appendChild(header);
+          section.appendChild(taskContainer);
+          container.appendChild(section);
+        });
+      }
       if (container.innerHTML === '') {
         container.innerHTML = `<div class="text-center p-8 text-gray-500">No tasks found for the filter: <strong>${currentFilter}</strong></div>`;
       }
     }
 
+    function createTaskCard(task, i, workstream, taskList) {
+      let cardBgClass = 'bg-gray-50';
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      if (task.duedate && task.status !== 'Complete' && task.status !== 'Closed') {
+        const dueDate = new Date(task.duedate);
+        if (!isNaN(dueDate.getTime())) {
+          if (dueDate < today) cardBgClass = 'bg-red-100 border-red-200';
+          else if (dueDate.getTime() === today.getTime()) cardBgClass = 'bg-yellow-100 border-yellow-200';
+        }
+      }
+      const card = document.createElement('div');
+      card.className = `card border rounded-lg p-3 shadow-sm ${cardBgClass}`;
+      card.id = `task-card-${task.rowIndex}`;
+      if (
+        lastMoveAnimation.workstream === workstream &&
+        (i === lastMoveAnimation.from || i === lastMoveAnimation.to)
+      ) {
+        card.classList.add('moving');
+        card.style.transform =
+          i === lastMoveAnimation.from
+            ? `translateY(${70 * (lastMoveAnimation.to - lastMoveAnimation.from)}px)`
+            : `translateY(${-70 * (lastMoveAnimation.to - lastMoveAnimation.from)}px)`;
+        setTimeout(() => { card.style.transform = ''; }, 20);
+        setTimeout(() => { card.classList.remove('moving'); }, 370);
+      }
+      const createField = (label, element) => {
+        const container = document.createElement('div');
+        container.className = 'grid grid-cols-4 items-start gap-2 text-sm';
+        const labelEl = document.createElement('strong');
+        labelEl.className = 'col-span-1 text-gray-600 font-medium';
+        labelEl.textContent = label + ':';
+        const elementWrapper = document.createElement('div');
+        elementWrapper.className = 'col-span-3';
+        elementWrapper.appendChild(element);
+        container.appendChild(labelEl);
+        container.appendChild(elementWrapper);
+        return container;
+      };
+      const taskInput = createInput('text', task.task, (e) => updateTask(task.rowIndex, 'task', e.target.value));
+      const ownerInput = createInput('text', task.owner, (e) => updateTask(task.rowIndex, 'owner', e.target.value));
+      const dueDateInput = createInput('date', task.duedate, (e) => updateTask(task.rowIndex, 'duedate', e.target.value));
+      const remarkTextarea = createTextarea(task.remark, (e) => updateTask(task.rowIndex, 'remark', e.target.value));
+      const statusSelect = createSelect(
+        ["Not Start","In-Progress","Complete","On hold","TBC from ttb","Closed","Open"],
+        task.status,
+        (e) => updateTask(task.rowIndex, 'status', e.target.value)
+      );
+      const workstreamSelect = createSelect(
+        workstreamOrder,
+        task.workstream,
+        (e) => changeTaskWorkstream(task.rowIndex, e.target.value)
+      );
+      card.appendChild(createField('Task', taskInput));
+      card.appendChild(createField('Owner', ownerInput));
+      card.appendChild(createField('Due', dueDateInput));
+      card.appendChild(createField('Status', statusSelect));
+      card.appendChild(createField('Remark', remarkTextarea));
+      card.appendChild(createField('Workstream', workstreamSelect));
+      // Up/Down arrows within workstream/same status
+      const actionDiv = document.createElement('div');
+      actionDiv.className = 'flex justify-end space-x-2 mt-2';
+      actionDiv.appendChild(createIconButton('⬆️', () => moveTask(task.rowIndex, 'up', workstream, task.status)));
+      actionDiv.appendChild(createIconButton('⬇️', () => moveTask(task.rowIndex, 'down', workstream, task.status)));
+      // Delete button
+      const delBtn = document.createElement('button');
+      delBtn.textContent = '🗑️';
+      delBtn.className = 'delete-btn';
+      delBtn.title = 'Delete task';
+      delBtn.onclick = () => {
+        if (confirm('Delete this task?')) deleteTask(task.rowIndex, workstream);
+      };
+      actionDiv.appendChild(delBtn);
+      card.appendChild(actionDiv);
+      return card;
+    }
     function createIconButton(text, onClick) {
       const btn = document.createElement('button');
       btn.textContent = text;
@@ -337,45 +468,53 @@
         }).updateTask(task);
       }
     }
-    // Animation-aware move
     function moveTask(rowIndex, direction, workstream, status) {
       const arr = allData[workstream];
       if (!arr) return;
       const idx = arr.findIndex(t => t.rowIndex === rowIndex);
       if (idx === -1) return;
       status = status ?? arr[idx].status;
-
-      // Find next index in same status
       let swapIdx = null;
       if (direction === 'up') {
         for (let i = idx - 1; i >= 0; i--) {
-          if (arr[i].status === status) {
-            swapIdx = i;
-            break;
-          }
+          if (arr[i].status === status) { swapIdx = i; break; }
         }
       } else if (direction === 'down') {
         for (let i = idx + 1; i < arr.length; i++) {
-          if (arr[i].status === status) {
-            swapIdx = i;
-            break;
-          }
+          if (arr[i].status === status) { swapIdx = i; break; }
         }
       }
       if (swapIdx !== null) {
-        // Animate: record what to animate
-        lastMoveAnimation = {
-          workstream,
-          from: idx,
-          to: swapIdx,
-        };
+        lastMoveAnimation = { workstream, from: idx, to: swapIdx };
         [arr[idx], arr[swapIdx]] = [arr[swapIdx], arr[idx]];
         [arr[idx].number, arr[swapIdx].number] = [arr[swapIdx].number, arr[idx].number];
         renderWorkstreams();
-        setTimeout(() => {
-          lastMoveAnimation = { workstream: null, from: null, to: null };
-        }, 400);
+        setTimeout(() => { lastMoveAnimation = { workstream: null, from: null, to: null }; }, 400);
         google.script.run.withSuccessHandler(() => {}).moveTask(rowIndex, direction);
+      }
+    }
+    function moveWorkstream(workstream, direction) {
+      const idx = workstreamOrder.indexOf(workstream);
+      if (direction === 'up' && idx > 0) {
+        [workstreamOrder[idx-1], workstreamOrder[idx]] = [workstreamOrder[idx], workstreamOrder[idx-1]];
+        renderWorkstreams();
+        google.script.run.withSuccessHandler(() => {}).moveWorkstream(workstream, direction);
+      } else if (direction === 'down' && idx < workstreamOrder.length - 1) {
+        [workstreamOrder[idx], workstreamOrder[idx+1]] = [workstreamOrder[idx+1], workstreamOrder[idx]];
+        renderWorkstreams();
+        google.script.run.withSuccessHandler(() => {}).moveWorkstream(workstream, direction);
+      }
+    }
+    function moveWorkstreamLR(workstream, direction) {
+      const idx = workstreamOrder.indexOf(workstream);
+      if (direction === 'left' && idx > 0) {
+        [workstreamOrder[idx-1], workstreamOrder[idx]] = [workstreamOrder[idx], workstreamOrder[idx-1]];
+        renderWorkstreams();
+        google.script.run.withSuccessHandler(() => {}).moveWorkstreamLR(workstream, direction);
+      } else if (direction === 'right' && idx < workstreamOrder.length - 1) {
+        [workstreamOrder[idx], workstreamOrder[idx+1]] = [workstreamOrder[idx+1], workstreamOrder[idx]];
+        renderWorkstreams();
+        google.script.run.withSuccessHandler(() => {}).moveWorkstreamLR(workstream, direction);
       }
     }
     function changeTaskWorkstream(rowIndex, newStream) {
@@ -398,7 +537,17 @@
       currentFilter = val;
       renderWorkstreams();
     }
-
+    function deleteTask(rowIndex, workstream) {
+      const arr = allData[workstream];
+      if (!arr) return;
+      const idx = arr.findIndex(t => t.rowIndex === rowIndex);
+      if (idx > -1) arr.splice(idx, 1);
+      renderWorkstreams();
+      google.script.run.withSuccessHandler(() => {
+        google.script.run.withSuccessHandler(() => {}).reindexAll();
+        loadData();
+      }).deleteTask(rowIndex);
+    }
     window.addEventListener('DOMContentLoaded', loadData);
   </script>
 </body>
