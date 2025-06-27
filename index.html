@@ -15,7 +15,12 @@
       font-family: 'Inter', sans-serif;
     }
     .card {
-      transition: all 0.2s ease-in-out;
+      transition: transform 0.35s cubic-bezier(.4,2,.5,1), background 0.2s;
+      will-change: transform;
+    }
+    .moving {
+      z-index: 10;
+      position: relative;
     }
   </style>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -38,9 +43,7 @@
     </div>
     
     <!-- Workstreams Container -->
-    <div id="workstreams" class="space-y-6">
-        <!-- Workstream sections will be dynamically inserted here -->
-    </div>
+    <div id="workstreams" class="space-y-6"></div>
   </div>
 
   <script>
@@ -53,12 +56,12 @@
           const formatDateForInput = (date) => date.toISOString().split('T')[0];
           const mockTasks = {
             'Project Alpha': [
-              { task: 'Design Mockups', workstream: 'Project Alpha', owner: 'Alice', duedate: formatDateForInput(today), status: 'In-Progress', remark: 'Due today!', rowIndex: 2 },
-              { task: 'Develop Frontend', workstream: 'Project Alpha', owner: 'Bob', duedate: '', status: 'Not Start', remark: '', rowIndex: 3 },
+              { number: 1, task: 'Design Mockups', workstream: 'Project Alpha', owner: 'Alice', duedate: formatDateForInput(today), status: 'In-Progress', remark: 'Due today!', rowIndex: 2 },
+              { number: 2, task: 'Develop Frontend', workstream: 'Project Alpha', owner: 'Bob', duedate: '', status: 'Not Start', remark: '', rowIndex: 3 },
             ],
             'Backend Services': [
-              { task: 'Setup Database', workstream: 'Backend Services', owner: 'Charlie', duedate: '', status: 'On hold', remark: 'Waiting for specs', rowIndex: 4 },
-              { task: 'Deploy to Staging', workstream: 'Backend Services', owner: 'David', duedate: '', status: 'Complete', remark: 'Done last week', rowIndex: 6 },
+              { number: 3, task: 'Setup Database', workstream: 'Backend Services', owner: 'Charlie', duedate: '', status: 'On hold', remark: 'Waiting for specs', rowIndex: 4 },
+              { number: 4, task: 'Deploy to Staging', workstream: 'Backend Services', owner: 'David', duedate: '', status: 'Complete', remark: 'Done last week', rowIndex: 6 },
             ]
           };
           const mockOrder = ['Project Alpha', 'Backend Services'];
@@ -66,6 +69,7 @@
         },
         addTask: (newTask) => {
           newTask.rowIndex = Math.floor(Math.random() * 1000) + 10;
+          newTask.number = Math.floor(Math.random() * 100) + 10;
           if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(newTask), 100);
         },
         updateTask: (task) => { if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100); },
@@ -95,8 +99,8 @@
     let allData = {};
     let currentFilter = 'In-Progress'; // Default filter
     let workstreamOrder = [];
+    let lastMoveAnimation = { workstream: null, from: null, to: null };
 
-    // --- DATA LOADING & INITIALIZATION ---
     function loadData() {
       document.getElementById('workstreams').innerHTML = '<div class="text-center p-8 text-gray-500">Loading tasks...</div>';
       google.script.run.withSuccessHandler(renderData).getTaskData();
@@ -107,14 +111,13 @@
       renderWorkstreams();
     }
 
-    // --- UI RENDERING ---
     function renderWorkstreams() {
       const container = document.getElementById('workstreams');
       container.innerHTML = '';
       workstreamOrder.forEach((workstream) => {
         const taskList = (allData[workstream] || [])
           .slice()
-          .sort((a, b) => a.rowIndex - b.rowIndex)
+          .sort((a, b) => (a.number || 0) - (b.number || 0))
           .filter(t => currentFilter === 'All' || t.status === currentFilter);
         if (!taskList.length) return;
 
@@ -132,7 +135,6 @@
           const newName = e.target.value;
           if (!newName.trim() || newName === oldName) return;
           google.script.run.withSuccessHandler(() => {
-            // Optimistically update UI before reload for better UX
             allData[newName] = allData[oldName];
             delete allData[oldName];
             const idx = workstreamOrder.indexOf(oldName);
@@ -156,7 +158,6 @@
           google.script.run.withSuccessHandler(addNewTaskToDataAndRender).addTask(task);
         };
 
-        // Movement and toggle buttons
         const upBtn = createIconButton('⬆️', () => {
           const idx = workstreamOrder.indexOf(workstream);
           if (idx > 0) {
@@ -191,8 +192,7 @@
         const taskContainer = document.createElement('div');
         taskContainer.className = 'p-4 space-y-4 task-container';
 
-        // --- TASK CARD RENDERING ---
-        taskList.forEach((task, taskIdx) => {
+        taskList.forEach((task, i) => {
           let cardBgClass = 'bg-gray-50';
           const today = new Date(); today.setHours(0, 0, 0, 0);
           if (task.duedate && task.status !== 'Complete' && task.status !== 'Closed') {
@@ -209,6 +209,25 @@
           card.className = `card border rounded-lg p-3 shadow-sm ${cardBgClass}`;
           card.id = `task-card-${task.rowIndex}`;
 
+          // Animate card movement
+          if (
+            lastMoveAnimation.workstream === workstream &&
+            (i === lastMoveAnimation.from || i === lastMoveAnimation.to)
+          ) {
+            card.classList.add('moving');
+            card.style.transform =
+              i === lastMoveAnimation.from
+                ? `translateY(${60 * (lastMoveAnimation.to - lastMoveAnimation.from)}px)`
+                : `translateY(${-60 * (lastMoveAnimation.to - lastMoveAnimation.from)}px)`;
+            setTimeout(() => {
+              card.style.transform = '';
+            }, 20);
+            setTimeout(() => {
+              card.classList.remove('moving');
+            }, 370);
+          }
+
+          // Field creation
           const createField = (label, element) => {
             const container = document.createElement('div');
             container.className = 'grid grid-cols-4 items-start gap-2 text-sm';
@@ -223,7 +242,6 @@
             return container;
           };
 
-          // Create input elements
           const taskInput = createInput('text', task.task, (e) => updateTask(task.rowIndex, 'task', e.target.value));
           const ownerInput = createInput('text', task.owner, (e) => updateTask(task.rowIndex, 'owner', e.target.value));
           const dueDateInput = createInput('date', task.duedate, (e) => updateTask(task.rowIndex, 'duedate', e.target.value));
@@ -248,11 +266,10 @@
           card.appendChild(createField('Remark', remarkTextarea));
           card.appendChild(createField('Workstream', workstreamSelect));
 
-          // Task action buttons (move up/down)
           const actionDiv = document.createElement('div');
           actionDiv.className = 'flex justify-end space-x-2 mt-2';
-          actionDiv.appendChild(createIconButton('⬆️', () => moveTask(task.rowIndex, 'up', workstream)));
-          actionDiv.appendChild(createIconButton('⬇️', () => moveTask(task.rowIndex, 'down', workstream)));
+          actionDiv.appendChild(createIconButton('⬆️', () => moveTask(task.rowIndex, 'up', workstream, task.status)));
+          actionDiv.appendChild(createIconButton('⬇️', () => moveTask(task.rowIndex, 'down', workstream, task.status)));
           card.appendChild(actionDiv);
 
           taskContainer.appendChild(card);
@@ -267,7 +284,6 @@
       }
     }
 
-    // --- HELPER FUNCTIONS FOR CREATING ELEMENTS ---
     function createIconButton(text, onClick) {
       const btn = document.createElement('button');
       btn.textContent = text;
@@ -305,7 +321,6 @@
       return select;
     }
 
-    // --- DATA MANIPULATION FUNCTIONS ---
     function addNewTaskToDataAndRender(newTask) {
       if (!allData[newTask.workstream]) allData[newTask.workstream] = [];
       allData[newTask.workstream].push(newTask);
@@ -322,23 +337,47 @@
         }).updateTask(task);
       }
     }
-    // Move task up or down, update local state and backend
-    function moveTask(rowIndex, direction, workstream) {
+    // Animation-aware move
+    function moveTask(rowIndex, direction, workstream, status) {
       const arr = allData[workstream];
       if (!arr) return;
       const idx = arr.findIndex(t => t.rowIndex === rowIndex);
       if (idx === -1) return;
-      if (direction === 'up' && idx > 0) {
-        [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
+      status = status ?? arr[idx].status;
+
+      // Find next index in same status
+      let swapIdx = null;
+      if (direction === 'up') {
+        for (let i = idx - 1; i >= 0; i--) {
+          if (arr[i].status === status) {
+            swapIdx = i;
+            break;
+          }
+        }
+      } else if (direction === 'down') {
+        for (let i = idx + 1; i < arr.length; i++) {
+          if (arr[i].status === status) {
+            swapIdx = i;
+            break;
+          }
+        }
+      }
+      if (swapIdx !== null) {
+        // Animate: record what to animate
+        lastMoveAnimation = {
+          workstream,
+          from: idx,
+          to: swapIdx,
+        };
+        [arr[idx], arr[swapIdx]] = [arr[swapIdx], arr[idx]];
+        [arr[idx].number, arr[swapIdx].number] = [arr[swapIdx].number, arr[idx].number];
         renderWorkstreams();
-        google.script.run.withSuccessHandler(() => {}).moveTask(rowIndex, direction);
-      } else if (direction === 'down' && idx < arr.length - 1) {
-        [arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]];
-        renderWorkstreams();
+        setTimeout(() => {
+          lastMoveAnimation = { workstream: null, from: null, to: null };
+        }, 400);
         google.script.run.withSuccessHandler(() => {}).moveTask(rowIndex, direction);
       }
     }
-    // Move task to a different workstream
     function changeTaskWorkstream(rowIndex, newStream) {
       const task = Object.values(allData).flat().find(t => t.rowIndex == rowIndex);
       if (task) {
