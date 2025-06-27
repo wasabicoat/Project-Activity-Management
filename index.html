@@ -6,21 +6,18 @@
   <title>Project Activity Management</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    /* Custom style for better focus visibility on editable inputs */
     .editable-input:focus {
       outline: none;
-      border-color: #3b82f6; /* Tailwind's blue-500 */
-      box-shadow: 0 0 0 2px #93c5fd; /* Tailwind's blue-300 */
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px #93c5fd;
     }
     body {
-        font-family: 'Inter', sans-serif; /* A clean, modern font */
+      font-family: 'Inter', sans-serif;
     }
-    /* Adding a subtle transition for a smoother feel */
     .card {
-        transition: all 0.2s ease-in-out;
+      transition: all 0.2s ease-in-out;
     }
   </style>
-  <!-- Google Fonts for Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -47,62 +44,35 @@
   </div>
 
   <script>
-    // --- FIX: Mocking google.script.run for development/preview environments ---
+    // --- Mock google.script.run for development/preview environments ---
     if (typeof google === 'undefined') {
-      console.log("Setting up mock 'google.script.run' for development.");
       let mockSuccessHandler = null;
-
       const mockApi = {
         getTaskData: () => {
           const today = new Date();
-          const yesterday = new Date();
-          yesterday.setDate(today.getDate() - 1);
-          const tomorrow = new Date();
-          tomorrow.setDate(today.getDate() + 1);
           const formatDateForInput = (date) => date.toISOString().split('T')[0];
-
           const mockTasks = {
             'Project Alpha': [
               { task: 'Design Mockups', workstream: 'Project Alpha', owner: 'Alice', duedate: formatDateForInput(today), status: 'In-Progress', remark: 'Due today!', rowIndex: 2 },
-              { task: 'Develop Frontend', workstream: 'Project Alpha', owner: 'Bob', duedate: formatDateForInput(tomorrow), status: 'Not Start', remark: '', rowIndex: 3 },
+              { task: 'Develop Frontend', workstream: 'Project Alpha', owner: 'Bob', duedate: '', status: 'Not Start', remark: '', rowIndex: 3 },
             ],
             'Backend Services': [
-              { task: 'Setup Database', workstream: 'Backend Services', owner: 'Charlie', duedate: formatDateForInput(yesterday), status: 'In-Progress', remark: 'Overdue!', rowIndex: 4 },
-              { task: 'API Endpoint for Users', workstream: 'Backend Services', owner: 'Alice', duedate: '', status: 'On hold', remark: 'Waiting for specs', rowIndex: 5 },
+              { task: 'Setup Database', workstream: 'Backend Services', owner: 'Charlie', duedate: '', status: 'On hold', remark: 'Waiting for specs', rowIndex: 4 },
               { task: 'Deploy to Staging', workstream: 'Backend Services', owner: 'David', duedate: '', status: 'Complete', remark: 'Done last week', rowIndex: 6 },
             ]
           };
           const mockOrder = ['Project Alpha', 'Backend Services'];
-          
-          if (mockSuccessHandler) {
-            // Simulate async call
-            setTimeout(() => mockSuccessHandler({ tasks: mockTasks, order: mockOrder }), 200);
-          }
+          if (mockSuccessHandler) setTimeout(() => mockSuccessHandler({ tasks: mockTasks, order: mockOrder }), 200);
         },
         addTask: (newTask) => {
-            newTask.rowIndex = Math.floor(Math.random() * 1000) + 10; // Random rowIndex
-            if (mockSuccessHandler) {
-                setTimeout(() => mockSuccessHandler(newTask), 100);
-            }
+          newTask.rowIndex = Math.floor(Math.random() * 1000) + 10;
+          if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(newTask), 100);
         },
-        updateTask: (task) => {
-          console.log('Mock: Updating task', task);
-          if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100);
-        },
-        renameWorkstream: (oldName, newName) => {
-            console.log(`Mock: Renaming ${oldName} to ${newName}`);
-            if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100);
-        },
-        moveWorkstream: (workstream, direction) => {
-            console.log(`Mock: Moving ${workstream} ${direction}`);
-            if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100);
-        },
-        moveTask: (rowIndex, direction) => {
-            console.log(`Mock: Moving task ${rowIndex} ${direction}`);
-            if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100);
-        }
+        updateTask: (task) => { if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100); },
+        renameWorkstream: (oldName, newName) => { if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100); },
+        moveWorkstream: (workstream, direction) => { if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100); },
+        moveTask: (rowIndex, direction) => { if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100); }
       };
-      
       window.google = {
         script: {
           run: new Proxy(mockApi, {
@@ -110,7 +80,6 @@
               if (prop === 'withSuccessHandler') {
                 return (handler) => {
                   mockSuccessHandler = handler;
-                  // Return the proxy to allow chaining: google.script.run.withSuccessHandler().myFunction()
                   return new Proxy(target, { get: (t, p) => t[p] });
                 };
               }
@@ -120,8 +89,7 @@
         }
       };
     }
-    // --- END OF FIX ---
-
+    // --- END OF MOCK ---
 
     // --- GLOBAL STATE ---
     let allData = {};
@@ -129,41 +97,25 @@
     let workstreamOrder = [];
 
     // --- DATA LOADING & INITIALIZATION ---
-    /**
-     * Loads initial task data from Google Apps Script backend.
-     */
     function loadData() {
-      // Show a simple loading indicator
       document.getElementById('workstreams').innerHTML = '<div class="text-center p-8 text-gray-500">Loading tasks...</div>';
       google.script.run.withSuccessHandler(renderData).getTaskData();
     }
-
-    /**
-     * Callback function to receive and store data from the backend.
-     * @param {{tasks: Object, order: Array<string>}} data - The data object from the backend.
-     */
     function renderData({ tasks, order }) {
       allData = tasks;
       workstreamOrder = order;
-      renderWorkstreams(); // Re-render the entire view with new data
+      renderWorkstreams();
     }
-    
+
     // --- UI RENDERING ---
-    /**
-     * Renders all workstreams and their tasks based on the current filter.
-     */
     function renderWorkstreams() {
       const container = document.getElementById('workstreams');
-      container.innerHTML = ''; // Clear previous content
-
-      workstreamOrder.forEach(workstream => {
-        // Create a copy and sort it by rowIndex to ensure order
+      container.innerHTML = '';
+      workstreamOrder.forEach((workstream) => {
         const taskList = (allData[workstream] || [])
-            .slice()
-            .sort((a,b) => a.rowIndex - b.rowIndex)
-            .filter(t => currentFilter === 'All' || t.status === currentFilter);
-        
-        // Don't render the workstream section if it has no tasks for the current filter
+          .slice()
+          .sort((a, b) => a.rowIndex - b.rowIndex)
+          .filter(t => currentFilter === 'All' || t.status === currentFilter);
         if (!taskList.length) return;
 
         const section = document.createElement('div');
@@ -178,18 +130,20 @@
         titleInput.addEventListener('change', (e) => {
           const oldName = workstream;
           const newName = e.target.value;
+          if (!newName.trim() || newName === oldName) return;
           google.script.run.withSuccessHandler(() => {
-              // Optimistically update UI before reload for better UX
-              allData[newName] = allData[oldName];
-              delete allData[oldName];
-              workstreamOrder[workstreamOrder.indexOf(oldName)] = newName;
-              renderWorkstreams();
+            // Optimistically update UI before reload for better UX
+            allData[newName] = allData[oldName];
+            delete allData[oldName];
+            const idx = workstreamOrder.indexOf(oldName);
+            if (idx > -1) workstreamOrder[idx] = newName;
+            renderWorkstreams();
           }).renameWorkstream(oldName, newName);
         });
 
         const controls = document.createElement('div');
         controls.className = 'flex items-center space-x-3 flex-shrink-0';
-        
+
         const addTaskBtn = document.createElement('button');
         addTaskBtn.className = 'text-blue-600 text-sm font-medium hover:underline';
         addTaskBtn.textContent = '+ Add Task';
@@ -201,17 +155,30 @@
           };
           google.script.run.withSuccessHandler(addNewTaskToDataAndRender).addTask(task);
         };
-        
+
         // Movement and toggle buttons
-        const upBtn = createIconButton('⬆️', () => google.script.run.withSuccessHandler(loadData).moveWorkstream(workstream, 'up'));
-        const downBtn = createIconButton('⬇️', () => google.script.run.withSuccessHandler(loadData).moveWorkstream(workstream, 'down'));
+        const upBtn = createIconButton('⬆️', () => {
+          const idx = workstreamOrder.indexOf(workstream);
+          if (idx > 0) {
+            [workstreamOrder[idx-1], workstreamOrder[idx]] = [workstreamOrder[idx], workstreamOrder[idx-1]];
+            renderWorkstreams();
+            google.script.run.withSuccessHandler(() => {}).moveWorkstream(workstream, 'up');
+          }
+        });
+        const downBtn = createIconButton('⬇️', () => {
+          const idx = workstreamOrder.indexOf(workstream);
+          if (idx > -1 && idx < workstreamOrder.length - 1) {
+            [workstreamOrder[idx], workstreamOrder[idx+1]] = [workstreamOrder[idx+1], workstreamOrder[idx]];
+            renderWorkstreams();
+            google.script.run.withSuccessHandler(() => {}).moveWorkstream(workstream, 'down');
+          }
+        });
         const toggleBtn = createIconButton('−', (e) => {
           const taskContainer = e.target.closest('.mb-4').querySelector('.task-container');
           taskContainer.classList.toggle('hidden');
           e.target.textContent = taskContainer.classList.contains('hidden') ? '+' : '−';
         });
         toggleBtn.className += ' text-2xl font-light';
-
 
         controls.appendChild(addTaskBtn);
         controls.appendChild(upBtn);
@@ -225,27 +192,22 @@
         taskContainer.className = 'p-4 space-y-4 task-container';
 
         // --- TASK CARD RENDERING ---
-        taskList.forEach((task) => {
-          // --- UPGRADE LOGIC: Determine card color based on due date ---
-          let cardBgClass = 'bg-gray-50'; // Default color
-          const today = new Date();
-          today.setHours(0, 0, 0, 0); 
-
+        taskList.forEach((task, taskIdx) => {
+          let cardBgClass = 'bg-gray-50';
+          const today = new Date(); today.setHours(0, 0, 0, 0);
           if (task.duedate && task.status !== 'Complete' && task.status !== 'Closed') {
             const dueDate = new Date(task.duedate);
             if (!isNaN(dueDate.getTime())) {
               if (dueDate < today) {
-                cardBgClass = 'bg-red-100 border-red-200'; // Overdue
+                cardBgClass = 'bg-red-100 border-red-200';
               } else if (dueDate.getTime() === today.getTime()) {
-                cardBgClass = 'bg-yellow-100 border-yellow-200'; // Due Today
+                cardBgClass = 'bg-yellow-100 border-yellow-200';
               }
             }
           }
-          // --- END OF UPGRADE LOGIC ---
-
           const card = document.createElement('div');
           card.className = `card border rounded-lg p-3 shadow-sm ${cardBgClass}`;
-          card.id = `task-card-${task.rowIndex}`; // Add an ID for easy access
+          card.id = `task-card-${task.rowIndex}`;
 
           const createField = (label, element) => {
             const container = document.createElement('div');
@@ -278,8 +240,7 @@
             task.workstream,
             (e) => changeTaskWorkstream(task.rowIndex, e.target.value)
           );
-          
-          // Append fields to the card
+
           card.appendChild(createField('Task', taskInput));
           card.appendChild(createField('Owner', ownerInput));
           card.appendChild(createField('Due', dueDateInput));
@@ -290,10 +251,10 @@
           // Task action buttons (move up/down)
           const actionDiv = document.createElement('div');
           actionDiv.className = 'flex justify-end space-x-2 mt-2';
-          actionDiv.appendChild(createIconButton('⬆️', () => moveTask(task.rowIndex, 'up')));
-          actionDiv.appendChild(createIconButton('⬇️', () => moveTask(task.rowIndex, 'down')));
+          actionDiv.appendChild(createIconButton('⬆️', () => moveTask(task.rowIndex, 'up', workstream)));
+          actionDiv.appendChild(createIconButton('⬇️', () => moveTask(task.rowIndex, 'down', workstream)));
           card.appendChild(actionDiv);
-          
+
           taskContainer.appendChild(card);
         });
 
@@ -301,136 +262,104 @@
         section.appendChild(taskContainer);
         container.appendChild(section);
       });
-      
-      if(container.innerHTML === '') {
-          container.innerHTML = `<div class="text-center p-8 text-gray-500">No tasks found for the filter: <strong>${currentFilter}</strong></div>`;
+      if (container.innerHTML === '') {
+        container.innerHTML = `<div class="text-center p-8 text-gray-500">No tasks found for the filter: <strong>${currentFilter}</strong></div>`;
       }
     }
 
     // --- HELPER FUNCTIONS FOR CREATING ELEMENTS ---
     function createIconButton(text, onClick) {
-        const btn = document.createElement('button');
-        btn.textContent = text;
-        btn.className = 'text-xs text-gray-600 hover:text-black hover:scale-110 transition-transform';
-        btn.onclick = onClick;
-        return btn;
+      const btn = document.createElement('button');
+      btn.textContent = text;
+      btn.className = 'text-xs text-gray-600 hover:text-black hover:scale-110 transition-transform';
+      btn.onclick = onClick;
+      return btn;
     }
-    
     function createInput(type, value, onChange) {
-        const input = document.createElement('input');
-        input.type = type;
-        input.className = 'editable-input border rounded px-2 py-1 w-full text-sm bg-white';
-        input.value = value;
-        input.onchange = onChange;
-        return input;
+      const input = document.createElement('input');
+      input.type = type;
+      input.className = 'editable-input border rounded px-2 py-1 w-full text-sm bg-white';
+      input.value = value;
+      input.onchange = onChange;
+      return input;
     }
-    
     function createTextarea(value, onChange) {
-        const textarea = document.createElement('textarea');
-        textarea.className = 'editable-input border rounded px-2 py-1 w-full text-sm bg-white';
-        textarea.rows = 2;
-        textarea.value = value;
-        textarea.onchange = onChange;
-        return textarea;
+      const textarea = document.createElement('textarea');
+      textarea.className = 'editable-input border rounded px-2 py-1 w-full text-sm bg-white';
+      textarea.rows = 2;
+      textarea.value = value;
+      textarea.onchange = onChange;
+      return textarea;
     }
-
     function createSelect(options, selectedValue, onChange) {
-        const select = document.createElement('select');
-        select.className = 'editable-input border rounded px-2 py-1 w-full text-sm bg-white';
-        select.onchange = onChange;
-        options.forEach(opt => {
-            const option = document.createElement('option');
-            option.value = opt;
-            option.textContent = opt;
-            if (opt === selectedValue) {
-                option.selected = true;
-            }
-            select.appendChild(option);
-        });
-        return select;
+      const select = document.createElement('select');
+      select.className = 'editable-input border rounded px-2 py-1 w-full text-sm bg-white';
+      select.onchange = onChange;
+      options.forEach(opt => {
+        const option = document.createElement('option');
+        option.value = opt;
+        option.textContent = opt;
+        if (opt === selectedValue) option.selected = true;
+        select.appendChild(option);
+      });
+      return select;
     }
-
 
     // --- DATA MANIPULATION FUNCTIONS ---
-    /**
-     * --- NEW FUNCTION ---
-     * Handles the successful addition of a task on the backend.
-     * It adds the new task to the local data object and re-renders the UI
-     * without needing a new server call to fetch all data.
-     * @param {Object} newTask - The new task object returned from the backend, including its rowIndex.
-     */
     function addNewTaskToDataAndRender(newTask) {
-      // Add the new task to the local data cache.
-      if (!allData[newTask.workstream]) {
-        allData[newTask.workstream] = [];
-      }
+      if (!allData[newTask.workstream]) allData[newTask.workstream] = [];
       allData[newTask.workstream].push(newTask);
-      
-      // Re-render the whole UI from local data. This is fast and feels instant.
       renderWorkstreams();
     }
-    
-    /**
-     * Updates a specific field of a task.
-     */
     function updateTask(rowIndex, field, value) {
-      // Find the task from the nested allData object
       const task = Object.values(allData).flat().find(t => t.rowIndex == rowIndex);
       if (task) {
         task[field] = value;
         google.script.run.withSuccessHandler(() => {
-            console.log(`Task ${rowIndex} updated.`);
-            // If status or due date changes, re-render to update card color
-            if(field === 'status' || field === 'duedate'){
-                renderWorkstreams();
-            }
+          if(field === 'status' || field === 'duedate'){
+            renderWorkstreams();
+          }
         }).updateTask(task);
       }
     }
-
-    /**
-     * Moves a task up or down within its workstream.
-     */
-    function moveTask(rowIndex, direction) {
-      google.script.run.withSuccessHandler(loadData).moveTask(rowIndex, direction);
+    // Move task up or down, update local state and backend
+    function moveTask(rowIndex, direction, workstream) {
+      const arr = allData[workstream];
+      if (!arr) return;
+      const idx = arr.findIndex(t => t.rowIndex === rowIndex);
+      if (idx === -1) return;
+      if (direction === 'up' && idx > 0) {
+        [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
+        renderWorkstreams();
+        google.script.run.withSuccessHandler(() => {}).moveTask(rowIndex, direction);
+      } else if (direction === 'down' && idx < arr.length - 1) {
+        [arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]];
+        renderWorkstreams();
+        google.script.run.withSuccessHandler(() => {}).moveTask(rowIndex, direction);
+      }
     }
-    
-    /**
-     * Changes the workstream of a task.
-     */
+    // Move task to a different workstream
     function changeTaskWorkstream(rowIndex, newStream) {
       const task = Object.values(allData).flat().find(t => t.rowIndex == rowIndex);
       if (task) {
-        // Find old workstream to remove the task from local data
         const oldStream = task.workstream;
         task.workstream = newStream;
-
         google.script.run.withSuccessHandler(() => {
-            // Optimistically update local data and re-render
-            const taskIndex = allData[oldStream].findIndex(t => t.rowIndex === rowIndex);
-            if(taskIndex > -1) {
-                const [movedTask] = allData[oldStream].splice(taskIndex, 1);
-                if(!allData[newStream]) {
-                    allData[newStream] = [];
-                }
-                allData[newStream].push(movedTask);
-                renderWorkstreams();
-            } else {
-                loadData(); // fallback to full reload if not found
-            }
+          const taskIndex = allData[oldStream].findIndex(t => t.rowIndex === rowIndex);
+          if(taskIndex > -1) {
+            const [movedTask] = allData[oldStream].splice(taskIndex, 1);
+            if(!allData[newStream]) allData[newStream] = [];
+            allData[newStream].push(movedTask);
+            renderWorkstreams();
+          }
         }).updateTask(task);
       }
     }
-    
-    /**
-     * Changes the current filter and re-renders the UI.
-     */
     function changeFilter(val) {
       currentFilter = val;
-      renderWorkstreams(); // Re-render with the new filter
+      renderWorkstreams();
     }
 
-    // --- EVENT LISTENERS ---
     window.addEventListener('DOMContentLoaded', loadData);
   </script>
 </body>

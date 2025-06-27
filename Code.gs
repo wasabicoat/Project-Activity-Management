@@ -1,167 +1,241 @@
-// Ensure you have these constants at the top of your Code.gs file
 const SHEET_ID = '1Cc-I45ehhpLB86dp-qBeOJh0aSj5V_0OOqyY3DG_1ZQ';
 const SHEET_NAME = 'action listlog';
 const ORDER_SHEET_NAME = 'workstream_order';
 
-function doGet() {
+function doGet(e) {
   return HtmlService.createHtmlOutputFromFile('index')
     .setTitle('Project Activity Management');
 }
 
+/**
+ * Returns all task data and workstream order for frontend.
+ */
 function getTaskData() {
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
-  const data = sheet.getDataRange().getValues().slice(1); // skip header
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  const orderSheet = ss.getSheetByName(ORDER_SHEET_NAME);
 
-  const result = {};
-  data.forEach((row, i) => {
-    const task = row[1];       // Column B
-    const workstream = row[2]; // Column C
-    const owner = row[3];      // Column D
-    const duedate = formatDate(row[4]); // Column E
-    const status = row[5] ? row[5].toString().trim() : 'Not Start'; // Column F
-    const remark = row[8];     // Column I
+  // Read workstream order from order sheet (single column)
+  let workstreamOrder = [];
+  if (orderSheet) {
+    workstreamOrder = orderSheet.getRange(1, 1, orderSheet.getLastRow(), 1).getValues().flat().filter(Boolean);
+  }
 
-    if (!workstream) return;
-    if (!result[workstream]) result[workstream] = [];
-    result[workstream].push({ task, workstream, owner, duedate, status, remark, rowIndex: i + 2 });
+  // Read all rows (including headers)
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const tasksArr = data.slice(1);
+
+  // Find the index of required fields
+  const idx = {
+    actionItemName: headers.indexOf('Action Item Name'),
+    category: headers.indexOf('Category'),
+    responder: headers.indexOf('Responder'),
+    duedate: headers.indexOf('Due Date'),
+    status: headers.indexOf('Status'),
+    remark: headers.indexOf('Remark'),
+    reference: headers.indexOf('Reference'),
+    reportttb: headers.indexOf('Report to ttb'),
+  };
+
+  // Build tasks as expected by frontend
+  const tasksByWorkstream = {};
+  tasksArr.forEach((row, i) => {
+    // Sheet row index (for update), +2 due to header row (1) and 0-indexing
+    const rowIndex = i + 2;
+    const workstream = row[idx.category] || 'Uncategorized';
+    const task = {
+      task: row[idx.actionItemName] || '',
+      workstream: workstream,
+      owner: row[idx.responder] || '',
+      duedate: row[idx.duedate] ? formatDateISO(row[idx.duedate]) : '',
+      status: row[idx.status] || 'Not Start',
+      remark: row[idx.remark] || '',
+      rowIndex: rowIndex
+    };
+    if (!tasksByWorkstream[workstream]) tasksByWorkstream[workstream] = [];
+    tasksByWorkstream[workstream].push(task);
   });
 
-  const orderSheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(ORDER_SHEET_NAME);
-  let order = Object.keys(result);
-  if (orderSheet) {
-    const values = orderSheet.getRange(1, 1, orderSheet.getLastRow(), 1).getValues().flat();
-    const existing = new Set(order);
-    order = values.filter(v => existing.has(v));
-    const missing = [...existing].filter(v => !values.includes(v));
-    order = [...order, ...missing];
+  // If workstream order missing, derive from tasks
+  if (!workstreamOrder.length) {
+    workstreamOrder = Object.keys(tasksByWorkstream);
   }
 
-  return { tasks: result, order };
+  return { tasks: tasksByWorkstream, order: workstreamOrder };
 }
 
-function formatDate(d) {
-  if (Object.prototype.toString.call(d) === '[object Date]') {
-    return Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+// Helper: format a Date or string to 'YYYY-MM-DD'
+function formatDateISO(val) {
+  if (!val) return '';
+  if (val instanceof Date) {
+    return val.toISOString().split('T')[0];
   }
-  return d ? d.toString().trim() : '';
-}
-
-function updateTask(task) {
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
-  const row = Number(task.rowIndex);
-  if (!row) return;
-  sheet.getRange(row, 2).setValue(task.task);
-  sheet.getRange(row, 3).setValue(task.workstream);
-  sheet.getRange(row, 4).setValue(task.owner);
-  sheet.getRange(row, 5).setValue(task.duedate);
-  sheet.getRange(row, 6).setValue(task.status);
-  sheet.getRange(row, 9).setValue(task.remark);
+  // For dates from sheet that are already string (e.g. 24-Jan-2025)
+  const tryDate = new Date(val);
+  if (!isNaN(tryDate.getTime())) return tryDate.toISOString().split('T')[0];
+  return '';
 }
 
 /**
- * --- UPDATED FUNCTION ---
- * Adds a new task to the sheet with an index in column A
- * and returns the new task object to the frontend.
- * @param {Object} task - The task object from the frontend.
- * @returns {Object} The complete task object with its new rowIndex.
+ * Adds a new task to the Google Sheet and returns the new task with rowIndex.
  */
-function addTask(task) {
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
-  
-  // Get the last row number to use as the index for the new task.
-  // This assumes row 1 is a header.
-  const newIndex = sheet.getLastRow();
-  
-  // Append the new row with the calculated index in column A.
-  sheet.appendRow([newIndex, task.task, task.workstream, task.owner, task.duedate, task.status, '', '', task.remark]);
-  
-  // Get the row number of the task we just added.
+function addTask(newTask) {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  // Find header indexes
+  const headers = sheet.getDataRange().getValues()[0];
+  const idx = {
+    number: headers.indexOf('#'),
+    actionItemName: headers.indexOf('Action Item Name'),
+    category: headers.indexOf('Category'),
+    responder: headers.indexOf('Responder'),
+    duedate: headers.indexOf('Due Date'),
+    status: headers.indexOf('Status'),
+    remark: headers.indexOf('Remark'),
+    reference: headers.indexOf('Reference'),
+    reportttb: headers.indexOf('Report to ttb'),
+  };
+
+  // Find the latest number in column A (ignoring header)
+  let lastNumber = 0;
+  if (idx.number > -1) {
+    const numbers = sheet.getRange(2, idx.number + 1, sheet.getLastRow() - 1, 1).getValues().flat();
+    // Find the largest number (skip empty or non-number cells)
+    numbers.forEach(n => {
+      if (!isNaN(n) && n !== '') lastNumber = Math.max(lastNumber, Number(n));
+    });
+  }
+
+  // Append the new row at the bottom
+  const values = Array(headers.length).fill('');
+  if (idx.number > -1) values[idx.number] = lastNumber + 1;
+  values[idx.actionItemName] = newTask.task;
+  values[idx.category] = newTask.workstream;
+  values[idx.responder] = newTask.owner;
+  values[idx.duedate] = newTask.duedate ? new Date(newTask.duedate) : '';
+  values[idx.status] = newTask.status || 'Not Start';
+  values[idx.remark] = newTask.remark || '';
+
+  sheet.appendRow(values);
   const newRowIndex = sheet.getLastRow();
-  task.rowIndex = newRowIndex;
-  
-  // Return the complete task object so the frontend can add it to the UI without a full refresh.
-  return task;
+
+  // Return new task in frontend format (with new rowIndex)
+  return {
+    ...newTask,
+    rowIndex: newRowIndex
+  };
 }
 
 
+/**
+ * Updates a task (row) in the sheet by rowIndex.
+ */
+function updateTask(task) {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  const headers = sheet.getDataRange().getValues()[0];
+  const idx = {
+    actionItemName: headers.indexOf('Action Item Name'),
+    category: headers.indexOf('Category'),
+    responder: headers.indexOf('Responder'),
+    duedate: headers.indexOf('Due Date'),
+    status: headers.indexOf('Status'),
+    remark: headers.indexOf('Remark'),
+    reference: headers.indexOf('Reference'),
+    reportttb: headers.indexOf('Report to ttb'),
+  };
+  const row = task.rowIndex;
+
+  // Defensive: Only update fields that exist
+  if (row < 2) return; // never update header
+
+  if (idx.actionItemName > -1) sheet.getRange(row, idx.actionItemName + 1).setValue(task.task);
+  if (idx.category > -1)        sheet.getRange(row, idx.category + 1).setValue(task.workstream);
+  if (idx.responder > -1)       sheet.getRange(row, idx.responder + 1).setValue(task.owner);
+  if (idx.duedate > -1)         sheet.getRange(row, idx.duedate + 1).setValue(task.duedate ? new Date(task.duedate) : '');
+  if (idx.status > -1)          sheet.getRange(row, idx.status + 1).setValue(task.status);
+  if (idx.remark > -1)          sheet.getRange(row, idx.remark + 1).setValue(task.remark);
+  // You can also update reference/reportttb if you wish.
+}
+
+
+/**
+ * Renames a workstream across all tasks and updates order sheet.
+ */
 function renameWorkstream(oldName, newName) {
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
+  if (oldName === newName) return;
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const sheet = ss.getSheetByName(SHEET_NAME);
   const data = sheet.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][2] === oldName) {
-      sheet.getRange(i + 1, 3).setValue(newName);
+  const headers = data[0];
+  const catIdx = headers.indexOf('Category');
+  // Update tasks
+  for (let r = 1; r < data.length; r++) {
+    if (data[r][catIdx] === oldName) {
+      sheet.getRange(r + 1, catIdx + 1).setValue(newName);
     }
   }
-  const orderSheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(ORDER_SHEET_NAME);
+  // Update order sheet
+  const orderSheet = ss.getSheetByName(ORDER_SHEET_NAME);
   if (orderSheet) {
-    const values = orderSheet.getRange(1, 1, orderSheet.getLastRow(), 1).getValues().flat();
-    const index = values.indexOf(oldName);
-    if (index !== -1) {
-      orderSheet.getRange(index + 1, 1).setValue(newName);
+    const values = orderSheet.getRange(1, 1, orderSheet.getLastRow(), 1).getValues();
+    for (let i = 0; i < values.length; i++) {
+      if (values[i][0] === oldName) {
+        orderSheet.getRange(i + 1, 1).setValue(newName);
+      }
     }
   }
 }
 
+/**
+ * Moves a workstream up or down in the order sheet.
+ */
 function moveWorkstream(workstream, direction) {
-  const sheet = SpreadsheetApp.openById(SHEET_ID);
-  let orderSheet = sheet.getSheetByName(ORDER_SHEET_NAME);
-  if (!orderSheet) {
-    orderSheet = sheet.insertSheet(ORDER_SHEET_NAME);
-    // If we create it, populate it with the current order
-    const taskData = getTaskData();
-    const initialOrder = taskData.order;
-    orderSheet.getRange(1, 1, initialOrder.length, 1).setValues(initialOrder.map(v => [v]));
-  }
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const orderSheet = ss.getSheetByName(ORDER_SHEET_NAME);
+  if (!orderSheet) return;
   const values = orderSheet.getRange(1, 1, orderSheet.getLastRow(), 1).getValues().flat();
-  const index = values.indexOf(workstream);
-  if (index === -1) return;
-  if (direction === 'up' && index > 0) {
-    [values[index - 1], values[index]] = [values[index], values[index - 1]];
-  } else if (direction === 'down' && index < values.length - 1) {
-    [values[index + 1], values[index]] = [values[index], values[index + 1]];
+  const idx = values.indexOf(workstream);
+  if (idx < 0) return;
+  if (direction === 'up' && idx > 0) {
+    [values[idx - 1], values[idx]] = [values[idx], values[idx - 1]];
+  } else if (direction === 'down' && idx < values.length - 1) {
+    [values[idx + 1], values[idx]] = [values[idx], values[idx + 1]];
   }
-  orderSheet.getRange(1, 1, values.length, 1).setValues(values.map(v => [v]));
+  // Write back new order
+  for (let i = 0; i < values.length; i++) {
+    orderSheet.getRange(i + 1, 1).setValue(values[i]);
+  }
 }
 
-
+/**
+ * Moves a task up or down within its workstream.
+ */
 function moveTask(rowIndex, direction) {
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const sheet = ss.getSheetByName(SHEET_NAME);
   const data = sheet.getDataRange().getValues();
-  const index = rowIndex - 1; // Convert 1-based rowIndex to 0-based array index
-  
-  if (index < 1 || index >= data.length) return; // Check bounds
-
-  const taskRow = data[index];
-  const workstream = taskRow[2];
-
-  let adjacentIndex = -1;
-  if (direction === 'up') {
-    // Search upwards for the first row with the same workstream
-    for (let i = index - 1; i >= 1; i--) {
-      if (data[i][2] === workstream) {
-        adjacentIndex = i;
-        break;
-      }
-    }
-  } else if (direction === 'down') {
-    // Search downwards for the first row with the same workstream
-    for (let i = index + 1; i < data.length; i++) {
-      if (data[i][2] === workstream) {
-        adjacentIndex = i;
-        break;
-      }
-    }
+  const headers = data[0];
+  const catIdx = headers.indexOf('Category');
+  // Find the task and its workstream
+  const taskRowIdx = rowIndex - 1; // data is 0-based, header is row 0
+  const taskWorkstream = data[taskRowIdx][catIdx];
+  // Collect all task rows in this workstream (skip header)
+  const taskRows = [];
+  for (let r = 1; r < data.length; r++) {
+    if (data[r][catIdx] === taskWorkstream) taskRows.push(r);
   }
-
-  if (adjacentIndex === -1) return; // No task to swap with
-
-  // Get values of the two rows to swap
-  const range1 = sheet.getRange(index + 1, 1, 1, data[0].length);
-  const range2 = sheet.getRange(adjacentIndex + 1, 1, 1, data[0].length);
-  const values1 = range1.getValues();
-  const values2 = range2.getValues();
-
-  // Swap the values
-  range1.setValues(values2);
-  range2.setValues(values1);
+  const pos = taskRows.indexOf(taskRowIdx);
+  if (pos < 0) return;
+  // Swap with previous/next in workstream
+  let swapWith = null;
+  if (direction === 'up' && pos > 0) swapWith = taskRows[pos - 1];
+  else if (direction === 'down' && pos < taskRows.length - 1) swapWith = taskRows[pos + 1];
+  if (swapWith !== null) {
+    const rowA = sheet.getRange(taskRowIdx + 1, 1, 1, headers.length).getValues()[0];
+    const rowB = sheet.getRange(swapWith + 1, 1, 1, headers.length).getValues()[0];
+    sheet.getRange(taskRowIdx + 1, 1, 1, headers.length).setValues([rowB]);
+    sheet.getRange(swapWith + 1, 1, 1, headers.length).setValues([rowA]);
+  }
 }
