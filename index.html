@@ -2,138 +2,28 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Project Activity Management</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Quill Editor CDN -->
   <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
   <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
   <style>
-    .editable-input:focus {
-      outline: none;
-      border-color: #3b82f6;
-      box-shadow: 0 0 0 2px #93c5fd;
-    }
-    body {
-      font-family: 'Inter', sans-serif;
-    }
-    .card {
-      transition: transform 0.35s cubic-bezier(.4,2,.5,1), background 0.2s;
-      will-change: transform;
-    }
-    .moving {
-      z-index: 10;
-      position: relative;
-    }
-    .kanban-board {
-      overflow-x: auto;
-      display: flex;
-      gap: 2rem;
-      padding-bottom: 1rem;
-    }
-    .kanban-col {
-      min-width: 340px;
-      max-width: 340px;
-      flex: 0 0 340px;
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      background: #f4f7fa;
-      border-radius: 1rem;
-      box-shadow: 0 2px 8px 0 rgba(0,0,0,0.04);
-      border: 1px solid #e5e7eb;
-      padding-bottom: 1rem;
-    }
-    @media (max-width: 480px) {
-      .kanban-col {
-        min-width: 94vw;
-        max-width: 98vw;
-      }
-    }
-    .kanban-tasks {
-      flex: 1 1 auto;
-      overflow-y: auto;
-      padding: 0 0.25rem;
-    }
-    .kanban-title {
-      font-size: 1.1rem;
-      font-weight: bold;
-      padding: 1rem 1rem 0.5rem 1rem;
-      color: #2563eb;
-      border-bottom: 2px solid #2563eb22;
-      background: #e0e7ff;
-      border-radius: 1rem 1rem 0 0;
-      margin-bottom: 0.5rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 0.3rem;
-    }
-    .toggle-btn {
-      transition: all 0.2s;
-      border-radius: 9999px;
-      font-weight: 500;
-      font-size: 1rem;
-      padding: 0.3rem 1.3rem 0.3rem 2.2rem;
-      background: linear-gradient(90deg,#e0e7ff 60%,#a5b4fc 100%);
-      color: #1e293b;
-      position: relative;
-      border: 1px solid #6366f1;
-      margin-bottom: 1rem;
-      margin-right: 1rem;
-      box-shadow: 0 2px 8px 0 rgba(99,102,241,.07);
-    }
-    .toggle-btn::before {
-      content: "";
-      position: absolute;
-      left: 0.5rem; top: 0.32rem;
-      width: 1.5rem; height: 1.5rem;
-      border-radius: 50%;
-      background: #6366f1;
-      transition: background 0.2s;
-    }
-    .toggle-btn[data-mode="kanban"]::before { background: #f59e42; }
-    .delete-btn {
-      color: #b91c1c;
-      background: #fee2e2;
-      padding: 0.25rem 0.5rem;
-      border-radius: 6px;
-      font-size: 1.1em;
-      margin-left: 0.7rem;
-      font-weight: bold;
-      cursor: pointer;
-      border: none;
-      transition: background 0.15s, color 0.15s;
-    }
-    .delete-btn:hover {
-      background: #f87171;
-      color: #fff;
-    }
-    .add-ws-bar {
-      background: #f1f5f9;
-      border: 1px solid #cbd5e1;
-      border-radius: 0.75rem;
-      display: flex;
-      align-items: center;
-      margin-bottom: 1.5rem;
-      padding: 1rem 1.5rem;
-      gap: 1rem;
-      box-shadow: 0 2px 8px 0 rgba(16,37,60,.04);
-      max-width: 600px;
-    }
-    .quill-card-remark .ql-container {
-      min-height: 38px !important;
-      border-radius: 0.5rem;
-      background: white;
-      font-size: 1em;
-    }
-    .quill-card-remark .ql-toolbar {
-      border-radius: 0.5rem 0.5rem 0 0;
-    }
+    .editable-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px #93c5fd; }
+    .card { transition: transform 0.35s cubic-bezier(.4,2,.5,1), background 0.2s; will-change: transform; }
+    .moving { z-index: 10; position: relative; }
+    .kanban-board { overflow-x: auto; display: flex; gap: 2rem; padding-bottom: 1rem; }
+    .kanban-col { min-width: 340px; max-width: 340px; flex: 0 0 340px; display: flex; flex-direction: column; height: 100%; background: #f4f7fa; border-radius: 1rem; box-shadow: 0 2px 8px 0 rgba(0,0,0,0.04); border: 1px solid #e5e7eb; padding-bottom: 1rem; }
+    .kanban-tasks { flex: 1 1 auto; overflow-y: auto; padding: 0 0.25rem; }
+    .kanban-title { font-size: 1.1rem; font-weight: bold; padding: 1rem 1rem 0.5rem 1rem; color: #2563eb; border-bottom: 2px solid #2563eb22; background: #e0e7ff; border-radius: 1rem 1rem 0 0; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; gap: 0.3rem;}
+    .toggle-btn { transition: all 0.2s; border-radius: 9999px; font-weight: 500; font-size: 1rem; padding: 0.3rem 1.3rem 0.3rem 2.2rem; background: linear-gradient(90deg,#e0e7ff 60%,#a5b4fc 100%); color: #1e293b; position: relative; border: 1px solid #6366f1; margin-bottom: 1rem; margin-right: 1rem; box-shadow: 0 2px 8px 0 rgba(99,102,241,.07);}
+    .toggle-btn::before { content: ""; position: absolute; left: 0.5rem; top: 0.32rem; width: 1.5rem; height: 1.5rem; border-radius: 50%; background: #6366f1; transition: background 0.2s;}
+    .toggle-btn[data-mode="kanban"]::before { background: #f59e42;}
+    .delete-btn { color: #b91c1c; background: #fee2e2; padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 1.1em; margin-left: 0.7rem; font-weight: bold; cursor: pointer; border: none; transition: background 0.15s, color 0.15s;}
+    .delete-btn:hover { background: #f87171; color: #fff;}
+    .add-ws-bar { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 0.75rem; display: flex; align-items: center; margin-bottom: 1.5rem; padding: 1rem 1.5rem; gap: 1rem; box-shadow: 0 2px 8px 0 rgba(16,37,60,.04); max-width: 600px;}
+    .quill-card-remark .ql-container { min-height: 38px !important; border-radius: 0.5rem; background: white; font-size: 1em;}
+    .quill-card-remark .ql-toolbar { border-radius: 0.5rem 0.5rem 0 0; }
   </style>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body class="p-4 sm:p-6 bg-gray-50">
   <div class="max-w-7xl mx-auto">
@@ -149,89 +39,45 @@
       </div>
     </div>
     <div class="mb-6 flex flex-wrap gap-2">
-      <button onclick="changeFilter('All')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">All</button>
-      <button onclick="changeFilter('In-Progress')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg shadow hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">In-Progress</button>
-      <button onclick="changeFilter('Not Start')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-yellow-500 rounded-lg shadow hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400">Not Start</button>
-      <button onclick="changeFilter('Complete')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-lg shadow hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">Complete</button>
-      <button onclick="changeFilter('On hold')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-lg shadow hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-400">On hold</button>
-      <button onclick="changeFilter('TBC from ttb')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg shadow hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">TBC from ttb</button>
-      <button onclick="changeFilter('Closed')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg shadow hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">Closed</button>
+      <button onclick="changeFilter('All')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow hover:bg-blue-700">All</button>
+      <button onclick="changeFilter('In-Progress')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg shadow hover:bg-green-700">In-Progress</button>
+      <button onclick="changeFilter('Not Start')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-yellow-500 rounded-lg shadow hover:bg-yellow-600">Not Start</button>
+      <button onclick="changeFilter('Complete')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-lg shadow hover:bg-gray-700">Complete</button>
+      <button onclick="changeFilter('On hold')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-lg shadow hover:bg-orange-600">On hold</button>
+      <button onclick="changeFilter('TBC from ttb')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg shadow hover:bg-purple-700">TBC from ttb</button>
+      <button onclick="changeFilter('Closed')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg shadow hover:bg-red-700">Closed</button>
     </div>
     <div id="workstreams"></div>
   </div>
   <script>
-    // --- MOCK google.script.run for local HTML development ---
-    // ... REMOVE this block if you use in Apps Script environment ...
-    if (typeof google === 'undefined') {
-      let mockSuccessHandler = null;
-      const mockApi = {
-        getTaskData: () => {
-          const today = new Date();
-          const formatDateForInput = (date) => date.toISOString().split('T')[0];
-          const mockTasks = {
-            'Project Alpha': [
-              { number: 1, task: 'Design Mockups', workstream: 'Project Alpha', owner: 'Alice', duedate: formatDateForInput(today), status: 'In-Progress', remark: '<b>Due today!</b>', rowIndex: 2 },
-              { number: 2, task: 'Develop Frontend', workstream: 'Project Alpha', owner: 'Bob', duedate: '', status: 'Not Start', remark: '', rowIndex: 3 },
-              { number: 5, task: 'Test Feature', workstream: 'Project Alpha', owner: 'Ken', duedate: '', status: 'In-Progress', remark: '', rowIndex: 4 },
-            ],
-            'Backend Services': [
-              { number: 3, task: 'Setup Database', workstream: 'Backend Services', owner: 'Charlie', duedate: '', status: 'On hold', remark: '<s>Waiting for specs</s>', rowIndex: 5 },
-              { number: 4, task: 'Deploy to Staging', workstream: 'Backend Services', owner: 'David', duedate: '', status: 'Complete', remark: 'Done last week', rowIndex: 6 },
-              { number: 6, task: 'API Integration', workstream: 'Backend Services', owner: 'Zoe', duedate: '', status: 'In-Progress', remark: '', rowIndex: 7 },
-            ]
-          };
-          const mockOrder = ['Project Alpha', 'Backend Services'];
-          if (mockSuccessHandler) setTimeout(() => mockSuccessHandler({ tasks: mockTasks, order: mockOrder }), 200);
-        },
-        addTask: (newTask) => {
-          newTask.rowIndex = Math.floor(Math.random() * 1000) + 10;
-          newTask.number = Math.floor(Math.random() * 100) + 10;
-          if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(newTask), 100);
-        },
-        updateTask: (task) => { if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100); },
-        renameWorkstream: (oldName, newName) => { if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100); },
-        moveWorkstream: (workstream, direction) => { if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100); },
-        moveWorkstreamLR: (workstream, direction) => { if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100); },
-        addWorkstream: (wsName, status) => {
-          if (mockSuccessHandler) setTimeout(() => mockSuccessHandler({
-            workstream: wsName,
-            task: { number: Math.floor(Math.random() * 100) + 10, task: "New Task", workstream: wsName, owner: '', duedate: '', status, remark: '', rowIndex: Math.floor(Math.random() * 1000) + 10 }
-          }), 100);
-        },
-        deleteTask: (rowIndex) => { if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100); },
-        reindexAll: () => { if (mockSuccessHandler) setTimeout(() => mockSuccessHandler(), 100); },
-      };
-      window.google = {
-        script: {
-          run: new Proxy(mockApi, {
-            get(target, prop) {
-              if (prop === 'withSuccessHandler') {
-                return (handler) => {
-                  mockSuccessHandler = handler;
-                  return new Proxy(target, { get: (t, p) => t[p] });
-                };
-              }
-              return target[prop];
-            }
-          })
-        }
-      };
-    }
-    // --- END MOCK ---
-
-    let allData = {};
+    let allData = {};  // { workstream: [tasks] }
+    let allTasks = []; // flat array
     let currentFilter = 'In-Progress';
     let workstreamOrder = [];
-    let lastMoveAnimation = { workstream: null, from: null, to: null };
+    let lastMoveAnimation = { workstream: null, from: null, to: null, direction: null };
     let currentView = 'list';
+    let collapsedWS = {};
 
     function loadData() {
       document.getElementById('workstreams').innerHTML = '<div class="text-center p-8 text-gray-500">Loading tasks...</div>';
       google.script.run.withSuccessHandler(renderData).getTaskData();
     }
-    function renderData({ tasks, order }) {
-      allData = tasks;
-      workstreamOrder = order;
+    function renderData({ tasks }) {
+      allTasks = tasks;
+      // group by workstream
+      allData = {};
+      tasks.forEach(t => {
+        if (!allData[t.workstream]) allData[t.workstream] = [];
+        allData[t.workstream].push(t);
+      });
+      workstreamOrder = [];
+      const seen = new Set();
+      tasks.forEach(t => {
+        if (!seen.has(t.workstream)) {
+          seen.add(t.workstream);
+          workstreamOrder.push(t.workstream);
+        }
+      });
       renderWorkstreams();
     }
     function toggleView() {
@@ -240,25 +86,18 @@
       const icon = document.getElementById('toggleViewIcon');
       const label = document.getElementById('toggleViewLabel');
       btn.dataset.mode = currentView;
-      if (currentView === 'list') {
-        icon.textContent = '🗂️';
-        label.textContent = 'Kanban View';
-      } else {
-        icon.textContent = '📝';
-        label.textContent = 'List View';
-      }
+      if (currentView === 'list') { icon.textContent = '🗂️'; label.textContent = 'Kanban View'; }
+      else { icon.textContent = '📝'; label.textContent = 'List View'; }
       renderWorkstreams();
     }
     function addWorkstreamUI() {
       const wsName = document.getElementById('wsInput').value.trim();
       if (!wsName) return;
       const status = currentFilter === 'All' ? 'Open' : currentFilter;
-      google.script.run.withSuccessHandler(({ workstream, task }) => {
-        if (!workstreamOrder.includes(workstream)) workstreamOrder.push(workstream);
-        allData[workstream] = [task];
-        document.getElementById('wsInput').value = '';
-        renderWorkstreams();
-      }).addWorkstream(wsName, status);
+      google.script.run.withSuccessHandler(() => loadData()).addTask({
+        task: 'New Task', owner: '', duedate: '', status, remark: '', workstream: wsName
+      });
+      document.getElementById('wsInput').value = '';
     }
     function renderWorkstreams() {
       const container = document.getElementById('workstreams');
@@ -266,62 +105,39 @@
       if (currentView === 'kanban') {
         container.className = 'kanban-board';
         workstreamOrder.forEach((workstream, wsIdx) => {
-          const taskList = (allData[workstream] || [])
-            .slice()
-            .sort((a, b) => (a.number || 0) - (b.number || 0))
-            .filter(t => currentFilter === 'All' || t.status === currentFilter);
-
+          const taskList = (allData[workstream] || []).filter(t => currentFilter === 'All' || t.status === currentFilter);
+          if (!taskList.length) return;
           const col = document.createElement('div');
           col.className = 'kanban-col';
-
           // Kanban header with left/right and + Add Task
           const titleDiv = document.createElement('div');
           titleDiv.className = 'kanban-title';
-
-          const leftBtn = createIconButton('⬅️', () => moveWorkstreamLR(workstream, 'left'));
+          const leftBtn = createIconButton('⬅️', () => moveWorkstreamUI(workstream, 'up', wsIdx));
           leftBtn.disabled = wsIdx === 0;
           leftBtn.style.opacity = wsIdx === 0 ? 0.4 : 1;
-
-          const rightBtn = createIconButton('➡️', () => moveWorkstreamLR(workstream, 'right'));
+          const rightBtn = createIconButton('➡️', () => moveWorkstreamUI(workstream, 'down', wsIdx));
           rightBtn.disabled = wsIdx === workstreamOrder.length - 1;
           rightBtn.style.opacity = wsIdx === workstreamOrder.length - 1 ? 0.4 : 1;
-
           const titleInput = document.createElement('input');
           titleInput.className = 'bg-transparent border-b-2 border-transparent focus:border-blue-500 editable-input w-full font-semibold text-blue-900';
           titleInput.value = workstream;
           titleInput.addEventListener('change', (e) => {
-            const oldName = workstream;
-            const newName = e.target.value;
+            const oldName = workstream, newName = e.target.value;
             if (!newName.trim() || newName === oldName) return;
-            google.script.run.withSuccessHandler(() => {
-              allData[newName] = allData[oldName];
-              delete allData[oldName];
-              const idx = workstreamOrder.indexOf(oldName);
-              if (idx > -1) workstreamOrder[idx] = newName;
-              renderWorkstreams();
-            }).renameWorkstream(oldName, newName);
+            google.script.run.withSuccessHandler(loadData).renameWorkstream(oldName, newName);
           });
-
           const addTaskBtn = document.createElement('button');
           addTaskBtn.className = 'ml-2 text-blue-600 text-xs font-medium hover:underline bg-blue-100 rounded-lg px-2 py-1';
           addTaskBtn.textContent = '+ Add Task';
           addTaskBtn.onclick = () => {
-            const task = {
-              task: 'New Task', owner: '', duedate: '', 
-              status: currentFilter === 'All' ? 'Open' : currentFilter, 
-              remark: '', workstream
-            };
-            google.script.run.withSuccessHandler(addNewTaskToDataAndRender).addTask(task);
+            google.script.run.withSuccessHandler(loadData).addTask({
+              task: 'New Task', owner: '', duedate: '', status: (currentFilter === 'All' ? 'Open' : currentFilter), remark: '', workstream
+            });
           };
-
-          titleDiv.appendChild(leftBtn);
-          titleDiv.appendChild(titleInput);
-          titleDiv.appendChild(addTaskBtn);
-          titleDiv.appendChild(rightBtn);
-
+          titleDiv.appendChild(leftBtn); titleDiv.appendChild(titleInput); titleDiv.appendChild(addTaskBtn); titleDiv.appendChild(rightBtn);
           col.appendChild(titleDiv);
 
-          // Tasks in column
+          // Kanban tasks
           const taskStack = document.createElement('div');
           taskStack.className = 'kanban-tasks flex flex-col gap-3 pt-2';
           taskList.forEach((task, i) => {
@@ -333,78 +149,61 @@
       } else {
         container.className = '';
         workstreamOrder.forEach((workstream, wsIdx) => {
-          const taskList = (allData[workstream] || [])
-            .slice()
-            .sort((a, b) => (a.number || 0) - (b.number || 0))
-            .filter(t => currentFilter === 'All' || t.status === currentFilter);
+          const taskList = (allData[workstream] || []).filter(t => currentFilter === 'All' || t.status === currentFilter);
           if (!taskList.length) return;
           const section = document.createElement('div');
           section.className = 'mb-4 bg-white rounded-lg shadow-md overflow-hidden';
-
-          // List header with up/down and + Add Task
           const header = document.createElement('div');
           header.className = 'bg-gray-100 px-4 py-3 flex justify-between items-center border-b border-gray-200';
+          // Collapse/expand button
+          const toggleBtn = document.createElement('button');
+          toggleBtn.innerHTML = collapsedWS[workstream] ? '►' : '▼';
+          toggleBtn.className = 'mr-2 text-lg font-bold';
+          toggleBtn.onclick = () => { collapsedWS[workstream] = !collapsedWS[workstream]; renderWorkstreams(); };
+          header.appendChild(toggleBtn);
 
           const titleInput = document.createElement('input');
           titleInput.className = 'text-lg font-semibold bg-transparent border-b-2 border-transparent focus:border-blue-500 editable-input w-full mr-4';
           titleInput.value = workstream;
           titleInput.addEventListener('change', (e) => {
-            const oldName = workstream;
-            const newName = e.target.value;
+            const oldName = workstream, newName = e.target.value;
             if (!newName.trim() || newName === oldName) return;
-            google.script.run.withSuccessHandler(() => {
-              allData[newName] = allData[oldName];
-              delete allData[oldName];
-              const idx = workstreamOrder.indexOf(oldName);
-              if (idx > -1) workstreamOrder[idx] = newName;
-              renderWorkstreams();
-            }).renameWorkstream(oldName, newName);
+            google.script.run.withSuccessHandler(loadData).renameWorkstream(oldName, newName);
           });
-
-          const upBtn = createIconButton('⬆️', () => moveWorkstream(workstream, 'up'));
-          upBtn.disabled = wsIdx === 0;
-          upBtn.style.opacity = wsIdx === 0 ? 0.4 : 1;
-          const downBtn = createIconButton('⬇️', () => moveWorkstream(workstream, 'down'));
-          downBtn.disabled = wsIdx === workstreamOrder.length - 1;
-          downBtn.style.opacity = wsIdx === workstreamOrder.length - 1 ? 0.4 : 1;
-
+          header.appendChild(titleInput);
+          const upBtn = createIconButton('⬆️', () => moveWorkstreamUI(workstream, 'up', wsIdx));
+          upBtn.disabled = wsIdx === 0; upBtn.style.opacity = wsIdx === 0 ? 0.4 : 1;
+          const downBtn = createIconButton('⬇️', () => moveWorkstreamUI(workstream, 'down', wsIdx));
+          downBtn.disabled = wsIdx === workstreamOrder.length - 1; downBtn.style.opacity = wsIdx === workstreamOrder.length - 1 ? 0.4 : 1;
           const addTaskBtn = document.createElement('button');
           addTaskBtn.className = 'ml-2 text-blue-600 text-xs font-medium hover:underline bg-blue-100 rounded-lg px-2 py-1';
           addTaskBtn.textContent = '+ Add Task';
           addTaskBtn.onclick = () => {
-            const task = {
-              task: 'New Task', owner: '', duedate: '', 
-              status: currentFilter === 'All' ? 'Open' : currentFilter, 
-              remark: '', workstream
-            };
-            google.script.run.withSuccessHandler(addNewTaskToDataAndRender).addTask(task);
+            google.script.run.withSuccessHandler(loadData).addTask({
+              task: 'New Task', owner: '', duedate: '', status: (currentFilter === 'All' ? 'Open' : currentFilter), remark: '', workstream
+            });
           };
-
           const controls = document.createElement('div');
           controls.className = 'flex items-center space-x-2 flex-shrink-0';
           controls.appendChild(addTaskBtn);
           controls.appendChild(upBtn);
           controls.appendChild(downBtn);
-
-          header.appendChild(titleInput);
           header.appendChild(controls);
-
-          const taskContainer = document.createElement('div');
-          taskContainer.className = 'p-4 space-y-4 task-container';
-          taskList.forEach((task, i) => {
-            taskContainer.appendChild(createTaskCard(task, i, workstream, taskList));
-          });
-
           section.appendChild(header);
-          section.appendChild(taskContainer);
+
+          if (!collapsedWS[workstream]) {
+            const taskContainer = document.createElement('div');
+            taskContainer.className = 'p-4 space-y-4 task-container';
+            taskList.forEach((task, i) => {
+              taskContainer.appendChild(createTaskCard(task, i, workstream, taskList));
+            });
+            section.appendChild(taskContainer);
+          }
           container.appendChild(section);
         });
       }
-      if (container.innerHTML === '') {
-        container.innerHTML = `<div class="text-center p-8 text-gray-500">No tasks found for the filter: <strong>${currentFilter}</strong></div>`;
-      }
+      if (container.innerHTML === '') container.innerHTML = `<div class="text-center p-8 text-gray-500">No tasks found for the filter: <strong>${currentFilter}</strong></div>`;
     }
-
     function createTaskCard(task, i, workstream, taskList) {
       let cardBgClass = 'bg-gray-50';
       const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -446,9 +245,8 @@
       const taskInput = createInput('text', task.task, (e) => updateTask(task.rowIndex, 'task', e.target.value));
       const ownerInput = createInput('text', task.owner, (e) => updateTask(task.rowIndex, 'owner', e.target.value));
       const dueDateInput = createInput('date', task.duedate, (e) => updateTask(task.rowIndex, 'duedate', e.target.value));
-      // === QUILL RICH REMARK FIELD ===
+      // Quill remark
       const remarkQuill = createQuillRemarkEditor(task, (e) => updateTask(task.rowIndex, 'remark', e.target.value));
-      // === END QUILL ===
       const statusSelect = createSelect(
         ["Not Start","In-Progress","Complete","On hold","TBC from ttb","Closed","Open"],
         task.status,
@@ -465,87 +263,75 @@
       card.appendChild(createField('Status', statusSelect));
       card.appendChild(createField('Remark', remarkQuill));
       card.appendChild(createField('Workstream', workstreamSelect));
+      // Up/Down arrows within workstream/same status
       const actionDiv = document.createElement('div');
       actionDiv.className = 'flex justify-end space-x-2 mt-2';
       actionDiv.appendChild(createIconButton('⬆️', () => moveTask(task.rowIndex, 'up', workstream, task.status)));
       actionDiv.appendChild(createIconButton('⬇️', () => moveTask(task.rowIndex, 'down', workstream, task.status)));
+      // Delete button
       const delBtn = document.createElement('button');
       delBtn.textContent = '🗑️';
       delBtn.className = 'delete-btn';
       delBtn.title = 'Delete task';
-      delBtn.onclick = () => {
-        if (confirm('Delete this task?')) deleteTask(task.rowIndex, workstream);
-      };
+      delBtn.onclick = () => { if (confirm('Delete this task?')) deleteTask(task.rowIndex, workstream); };
       actionDiv.appendChild(delBtn);
       card.appendChild(actionDiv);
       return card;
     }
-
-    // ---- QUILL RICH REMARK FIELD ----
+    // --- Quill editor with toolbar per card ---
     function createQuillRemarkEditor(task, onChange) {
-  // Wrapper for Quill editor and toolbar
-  const wrapper = document.createElement('div');
-  wrapper.style.minWidth = '180px';
-  wrapper.style.width = '100%';
-  wrapper.className = 'quill-card-remark';
-
-  // Unique id for editor and toolbar
-  const idSuffix = Math.random().toString(36).substr(2, 8);
-  const toolbarId = 'quill-toolbar-' + idSuffix;
-  const editorId = 'quill-remark-' + idSuffix;
-
-  // Toolbar HTML (visible!)
-  const toolbarDiv = document.createElement('div');
-  toolbarDiv.id = toolbarId;
-  toolbarDiv.innerHTML = `
-    <span class="ql-formats">
-      <button class="ql-bold"></button>
-      <button class="ql-italic"></button>
-      <button class="ql-underline"></button>
-      <button class="ql-strike"></button>
-    </span>
-    <span class="ql-formats">
-      <select class="ql-size"></select>
-    </span>
-    <span class="ql-formats">
-      <button class="ql-list" value="ordered"></button>
-      <button class="ql-list" value="bullet"></button>
-    </span>
-  `;
-  wrapper.appendChild(toolbarDiv);
-
-  // Editor div
-  const editorDiv = document.createElement('div');
-  editorDiv.style.minHeight = '38px';
-  editorDiv.style.width = '100%';
-  editorDiv.id = editorId;
-  wrapper.appendChild(editorDiv);
-
-  setTimeout(() => {
-    const quill = new Quill('#' + editorId, {
-      theme: 'snow',
-      placeholder: 'Enter remark...',
-      modules: {
-        toolbar: '#' + toolbarId
-      }
-    });
-    if (task.remark) quill.root.innerHTML = task.remark;
-    quill.on('text-change', function() {
-      onChange({ target: { value: quill.root.innerHTML } });
-      quill.root.style.height = "auto";
-      quill.root.style.height = (quill.root.scrollHeight) + "px";
-    });
-    setTimeout(() => {
-      quill.root.style.height = "auto";
-      quill.root.style.height = (quill.root.scrollHeight) + "px";
-    }, 50);
-  }, 0);
-
-  return wrapper;
-}
-
-    // ---- END QUILL ----
-
+      const wrapper = document.createElement('div');
+      wrapper.style.minWidth = '180px';
+      wrapper.style.width = '100%';
+      wrapper.className = 'quill-card-remark';
+      const idSuffix = Math.random().toString(36).substr(2, 8);
+      const toolbarId = 'quill-toolbar-' + idSuffix;
+      const editorId = 'quill-remark-' + idSuffix;
+      // Toolbar HTML
+      const toolbarDiv = document.createElement('div');
+      toolbarDiv.id = toolbarId;
+      toolbarDiv.innerHTML = `
+        <span class="ql-formats">
+          <button class="ql-bold"></button>
+          <button class="ql-italic"></button>
+          <button class="ql-underline"></button>
+          <button class="ql-strike"></button>
+        </span>
+        <span class="ql-formats">
+          <select class="ql-size"></select>
+        </span>
+        <span class="ql-formats">
+          <button class="ql-list" value="ordered"></button>
+          <button class="ql-list" value="bullet"></button>
+        </span>
+      `;
+      wrapper.appendChild(toolbarDiv);
+      // Editor
+      const editorDiv = document.createElement('div');
+      editorDiv.style.minHeight = '38px';
+      editorDiv.style.width = '100%';
+      editorDiv.id = editorId;
+      wrapper.appendChild(editorDiv);
+      setTimeout(() => {
+        const quill = new Quill('#' + editorId, {
+          theme: 'snow',
+          placeholder: 'Enter remark...',
+          modules: { toolbar: '#' + toolbarId }
+        });
+        if (task.remark) quill.root.innerHTML = task.remark;
+        quill.on('text-change', function() {
+          onChange({ target: { value: quill.root.innerHTML } });
+          quill.root.style.height = "auto";
+          quill.root.style.height = (quill.root.scrollHeight) + "px";
+        });
+        setTimeout(() => {
+          quill.root.style.height = "auto";
+          quill.root.style.height = (quill.root.scrollHeight) + "px";
+        }, 50);
+      }, 0);
+      return wrapper;
+    }
+    // --- /Quill ---
     function createIconButton(text, onClick) {
       const btn = document.createElement('button');
       btn.textContent = text;
@@ -567,8 +353,7 @@
       select.onchange = onChange;
       options.forEach(opt => {
         const option = document.createElement('option');
-        option.value = opt;
-        option.textContent = opt;
+        option.value = opt; option.textContent = opt;
         if (opt === selectedValue) option.selected = true;
         select.appendChild(option);
       });
@@ -580,94 +365,56 @@
       renderWorkstreams();
     }
     function updateTask(rowIndex, field, value) {
-      const task = Object.values(allData).flat().find(t => t.rowIndex == rowIndex);
+      const task = allTasks.find(t => t.rowIndex == rowIndex);
       if (task) {
         task[field] = value;
         google.script.run.withSuccessHandler(() => {
-          if(field === 'status' || field === 'duedate'){
-            renderWorkstreams();
-          }
+          if(field === 'status' || field === 'duedate'){ renderWorkstreams(); }
         }).updateTask(task);
       }
     }
     function moveTask(rowIndex, direction, workstream, status) {
-      const arr = allData[workstream];
+      const arr = (allData[workstream] || []);
       if (!arr) return;
       const idx = arr.findIndex(t => t.rowIndex === rowIndex);
       if (idx === -1) return;
       status = status ?? arr[idx].status;
       let swapIdx = null;
       if (direction === 'up') {
-        for (let i = idx - 1; i >= 0; i--) {
-          if (arr[i].status === status) { swapIdx = i; break; }
-        }
+        for (let i = idx - 1; i >= 0; i--) if (arr[i].status === status) { swapIdx = i; break; }
       } else if (direction === 'down') {
-        for (let i = idx + 1; i < arr.length; i++) {
-          if (arr[i].status === status) { swapIdx = i; break; }
-        }
+        for (let i = idx + 1; i < arr.length; i++) if (arr[i].status === status) { swapIdx = i; break; }
       }
       if (swapIdx !== null) {
-        lastMoveAnimation = { workstream, from: idx, to: swapIdx };
+        lastMoveAnimation = { workstream, from: idx, to: swapIdx, direction };
         [arr[idx], arr[swapIdx]] = [arr[swapIdx], arr[idx]];
         [arr[idx].number, arr[swapIdx].number] = [arr[swapIdx].number, arr[idx].number];
         renderWorkstreams();
         setTimeout(() => { lastMoveAnimation = { workstream: null, from: null, to: null }; }, 400);
-        google.script.run.withSuccessHandler(() => {}).moveTask(rowIndex, direction);
+        // You can implement task move in the backend as well if you want persistence.
       }
     }
-    function moveWorkstream(workstream, direction) {
-      const idx = workstreamOrder.indexOf(workstream);
-      if (direction === 'up' && idx > 0) {
-        [workstreamOrder[idx-1], workstreamOrder[idx]] = [workstreamOrder[idx], workstreamOrder[idx-1]];
-        renderWorkstreams();
-        google.script.run.withSuccessHandler(() => {}).moveWorkstream(workstream, direction);
-      } else if (direction === 'down' && idx < workstreamOrder.length - 1) {
-        [workstreamOrder[idx], workstreamOrder[idx+1]] = [workstreamOrder[idx+1], workstreamOrder[idx]];
-        renderWorkstreams();
-        google.script.run.withSuccessHandler(() => {}).moveWorkstream(workstream, direction);
-      }
-    }
-    function moveWorkstreamLR(workstream, direction) {
-      const idx = workstreamOrder.indexOf(workstream);
-      if (direction === 'left' && idx > 0) {
-        [workstreamOrder[idx-1], workstreamOrder[idx]] = [workstreamOrder[idx], workstreamOrder[idx-1]];
-        renderWorkstreams();
-        google.script.run.withSuccessHandler(() => {}).moveWorkstreamLR(workstream, direction);
-      } else if (direction === 'right' && idx < workstreamOrder.length - 1) {
-        [workstreamOrder[idx], workstreamOrder[idx+1]] = [workstreamOrder[idx+1], workstreamOrder[idx]];
-        renderWorkstreams();
-        google.script.run.withSuccessHandler(() => {}).moveWorkstreamLR(workstream, direction);
-      }
+    function moveWorkstreamUI(workstream, direction, wsIdx) {
+      let targetIdx = direction === 'up' ? wsIdx - 1 : wsIdx + 1;
+      if (targetIdx < 0 || targetIdx >= workstreamOrder.length) return;
+      [workstreamOrder[wsIdx], workstreamOrder[targetIdx]] = [workstreamOrder[targetIdx], workstreamOrder[wsIdx]];
+      renderWorkstreams();
+      setTimeout(() => {
+        google.script.run.withSuccessHandler(loadData).moveWorkstreamInSheet(workstream, direction);
+      }, 350);
     }
     function changeTaskWorkstream(rowIndex, newStream) {
-      const task = Object.values(allData).flat().find(t => t.rowIndex == rowIndex);
+      const task = allTasks.find(t => t.rowIndex == rowIndex);
       if (task) {
         const oldStream = task.workstream;
         task.workstream = newStream;
-        google.script.run.withSuccessHandler(() => {
-          const taskIndex = allData[oldStream].findIndex(t => t.rowIndex === rowIndex);
-          if(taskIndex > -1) {
-            const [movedTask] = allData[oldStream].splice(taskIndex, 1);
-            if(!allData[newStream]) allData[newStream] = [];
-            allData[newStream].push(movedTask);
-            renderWorkstreams();
-          }
-        }).updateTask(task);
+        google.script.run.withSuccessHandler(loadData).updateTask(task);
       }
     }
-    function changeFilter(val) {
-      currentFilter = val;
-      renderWorkstreams();
-    }
+    function changeFilter(val) { currentFilter = val; renderWorkstreams(); }
     function deleteTask(rowIndex, workstream) {
-      const arr = allData[workstream];
-      if (!arr) return;
-      const idx = arr.findIndex(t => t.rowIndex === rowIndex);
-      if (idx > -1) arr.splice(idx, 1);
-      renderWorkstreams();
       google.script.run.withSuccessHandler(() => {
-        google.script.run.withSuccessHandler(() => {}).reindexAll();
-        loadData();
+        google.script.run.withSuccessHandler(loadData).reindexAll();
       }).deleteTask(rowIndex);
     }
     window.addEventListener('DOMContentLoaded', loadData);
