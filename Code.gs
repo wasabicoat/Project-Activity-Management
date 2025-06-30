@@ -257,3 +257,93 @@ function doGet(e) {
   return HtmlService.createHtmlOutputFromFile('index')
     .setTitle('Project Activity Management');
 }
+
+function addWorkstream(wsName, status) {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  const orderSheet = ss.getSheetByName(ORDER_SHEET_NAME);
+
+  // Add workstream to order sheet
+  if (orderSheet) {
+    orderSheet.appendRow([wsName]);
+  }
+
+  // Get header indices
+  const headers = sheet.getDataRange().getValues()[0];
+  const idx = {
+    number: headers.indexOf('#'),
+    actionItemName: headers.indexOf('Action Item Name'),
+    category: headers.indexOf('Category'),
+    responder: headers.indexOf('Responder'),
+    duedate: headers.indexOf('Due Date'),
+    status: headers.indexOf('Status'),
+    remark: headers.indexOf('Remark')
+  };
+
+  // Find max number
+  let lastNumber = 0;
+  if (idx.number > -1) {
+    const numbers = sheet.getRange(2, idx.number + 1, sheet.getLastRow() - 1, 1).getValues().flat();
+    numbers.forEach(n => { if (!isNaN(n) && n !== '') lastNumber = Math.max(lastNumber, Number(n)); });
+  }
+
+  // Append first task for new workstream
+  const values = Array(headers.length).fill('');
+  if (idx.number > -1) values[idx.number] = lastNumber + 1;
+  values[idx.actionItemName] = "New Task";
+  values[idx.category] = wsName;
+  values[idx.responder] = '';
+  values[idx.duedate] = '';
+  values[idx.status] = status || 'Not Start';
+  values[idx.remark] = '';
+  sheet.appendRow(values);
+
+  return {
+    workstream: wsName,
+    task: {
+      number: lastNumber + 1,
+      task: "New Task",
+      workstream: wsName,
+      owner: '',
+      duedate: '',
+      status: status || 'Not Start',
+      remark: '',
+      rowIndex: sheet.getLastRow()
+    }
+  };
+}
+
+function deleteTask(rowIndex) {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  if (rowIndex > 1) sheet.deleteRow(rowIndex);
+}
+
+function reindexAll() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  const headers = sheet.getDataRange().getValues()[0];
+  const idxNumber = headers.indexOf('#');
+  const lastRow = sheet.getLastRow();
+  for (let i = 2; i <= lastRow; i++) {
+    sheet.getRange(i, idxNumber + 1).setValue(i - 1);
+  }
+}
+
+// Add this to moveWorkstream, and duplicate for left/right for kanban
+function moveWorkstreamLR(workstream, direction) {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const orderSheet = ss.getSheetByName(ORDER_SHEET_NAME);
+  if (!orderSheet) return;
+  const values = orderSheet.getRange(1, 1, orderSheet.getLastRow(), 1).getValues().flat();
+  const idx = values.indexOf(workstream);
+  if (idx < 0) return;
+  if (direction === 'left' && idx > 0) {
+    [values[idx - 1], values[idx]] = [values[idx], values[idx - 1]];
+  } else if (direction === 'right' && idx < values.length - 1) {
+    [values[idx + 1], values[idx]] = [values[idx], values[idx + 1]];
+  }
+  for (let i = 0; i < values.length; i++) {
+    orderSheet.getRange(i + 1, 1).setValue(values[i]);
+  }
+}
