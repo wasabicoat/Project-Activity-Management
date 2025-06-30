@@ -217,18 +217,7 @@
       const card = document.createElement('div');
       card.className = `card border rounded-lg p-3 shadow-sm ${cardBgClass}`;
       card.id = `task-card-${task.rowIndex}`;
-      if (
-        lastMoveAnimation.workstream === workstream &&
-        (i === lastMoveAnimation.from || i === lastMoveAnimation.to)
-      ) {
-        card.classList.add('moving');
-        card.style.transform =
-          i === lastMoveAnimation.from
-            ? `translateY(${70 * (lastMoveAnimation.to - lastMoveAnimation.from)}px)`
-            : `translateY(${-70 * (lastMoveAnimation.to - lastMoveAnimation.from)}px)`;
-        setTimeout(() => { card.style.transform = ''; }, 20);
-        setTimeout(() => { card.classList.remove('moving'); }, 370);
-      }
+
       const createField = (label, element) => {
         const container = document.createElement('div');
         container.className = 'grid grid-cols-4 items-start gap-2 text-sm';
@@ -266,8 +255,7 @@
       // Up/Down arrows within workstream/same status
       const actionDiv = document.createElement('div');
       actionDiv.className = 'flex justify-end space-x-2 mt-2';
-      actionDiv.appendChild(createIconButton('⬆️', () => moveTask(task.rowIndex, 'up', workstream, task.status)));
-      actionDiv.appendChild(createIconButton('⬇️', () => moveTask(task.rowIndex, 'down', workstream, task.status)));
+
       // Delete button
       const delBtn = document.createElement('button');
       delBtn.textContent = '🗑️';
@@ -371,27 +359,6 @@
         google.script.run.withSuccessHandler(() => {
           if(field === 'status' || field === 'duedate'){ renderWorkstreams(); }
         }).updateTask(task);
-      }
-    }
-    function moveTask(rowIndex, direction, workstream, status) {
-      const arr = (allData[workstream] || []);
-      if (!arr) return;
-      const idx = arr.findIndex(t => t.rowIndex === rowIndex);
-      if (idx === -1) return;
-      status = status ?? arr[idx].status;
-      let swapIdx = null;
-      if (direction === 'up') {
-        for (let i = idx - 1; i >= 0; i--) if (arr[i].status === status) { swapIdx = i; break; }
-      } else if (direction === 'down') {
-        for (let i = idx + 1; i < arr.length; i++) if (arr[i].status === status) { swapIdx = i; break; }
-      }
-      if (swapIdx !== null) {
-        lastMoveAnimation = { workstream, from: idx, to: swapIdx, direction };
-        [arr[idx], arr[swapIdx]] = [arr[swapIdx], arr[idx]];
-        [arr[idx].number, arr[swapIdx].number] = [arr[swapIdx].number, arr[idx].number];
-        renderWorkstreams();
-        setTimeout(() => { lastMoveAnimation = { workstream: null, from: null, to: null }; }, 400);
-        // You can implement task move in the backend as well if you want persistence.
       }
     }
     function moveWorkstreamUI(workstream, direction, wsIdx) {
