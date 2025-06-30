@@ -10,7 +10,6 @@
   <style>
     .editable-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px #93c5fd; }
     .card { transition: transform 0.35s cubic-bezier(.4,2,.5,1), background 0.2s; will-change: transform; }
-    .moving { z-index: 10; position: relative; }
     .kanban-board { overflow-x: auto; display: flex; gap: 2rem; padding-bottom: 1rem; }
     .kanban-col { min-width: 340px; max-width: 340px; flex: 0 0 340px; display: flex; flex-direction: column; height: 100%; background: #f4f7fa; border-radius: 1rem; box-shadow: 0 2px 8px 0 rgba(0,0,0,0.04); border: 1px solid #e5e7eb; padding-bottom: 1rem; }
     .kanban-tasks { flex: 1 1 auto; overflow-y: auto; padding: 0 0.25rem; }
@@ -50,13 +49,13 @@
     <div id="workstreams"></div>
   </div>
   <script>
-    let allData = {};  // { workstream: [tasks] }
-    let allTasks = []; // flat array
+    let allData = {};
+    let allTasks = [];
     let currentFilter = 'In-Progress';
     let workstreamOrder = [];
-    let lastMoveAnimation = { workstream: null, from: null, to: null, direction: null };
     let currentView = 'list';
     let collapsedWS = {};
+    let isMovingWS = false;
 
     function loadData() {
       document.getElementById('workstreams').innerHTML = '<div class="text-center p-8 text-gray-500">Loading tasks...</div>';
@@ -64,7 +63,6 @@
     }
     function renderData({ tasks }) {
       allTasks = tasks;
-      // group by workstream
       allData = {};
       tasks.forEach(t => {
         if (!allData[t.workstream]) allData[t.workstream] = [];
@@ -112,12 +110,12 @@
           // Kanban header with left/right and + Add Task
           const titleDiv = document.createElement('div');
           titleDiv.className = 'kanban-title';
-          const leftBtn = createIconButton('⬅️', () => moveWorkstreamUI(workstream, 'up', wsIdx));
-          leftBtn.disabled = wsIdx === 0;
-          leftBtn.style.opacity = wsIdx === 0 ? 0.4 : 1;
-          const rightBtn = createIconButton('➡️', () => moveWorkstreamUI(workstream, 'down', wsIdx));
-          rightBtn.disabled = wsIdx === workstreamOrder.length - 1;
-          rightBtn.style.opacity = wsIdx === workstreamOrder.length - 1 ? 0.4 : 1;
+          const leftBtn = createIconButton('⬅️', () => moveWorkstreamUI(workstream, 'up', wsIdx), 'ws-move-btn');
+          leftBtn.disabled = isMovingWS || wsIdx === 0;
+          leftBtn.style.opacity = leftBtn.disabled ? 0.4 : 1;
+          const rightBtn = createIconButton('➡️', () => moveWorkstreamUI(workstream, 'down', wsIdx), 'ws-move-btn');
+          rightBtn.disabled = isMovingWS || wsIdx === workstreamOrder.length - 1;
+          rightBtn.style.opacity = rightBtn.disabled ? 0.4 : 1;
           const titleInput = document.createElement('input');
           titleInput.className = 'bg-transparent border-b-2 border-transparent focus:border-blue-500 editable-input w-full font-semibold text-blue-900';
           titleInput.value = workstream;
@@ -171,10 +169,10 @@
             google.script.run.withSuccessHandler(loadData).renameWorkstream(oldName, newName);
           });
           header.appendChild(titleInput);
-          const upBtn = createIconButton('⬆️', () => moveWorkstreamUI(workstream, 'up', wsIdx));
-          upBtn.disabled = wsIdx === 0; upBtn.style.opacity = wsIdx === 0 ? 0.4 : 1;
-          const downBtn = createIconButton('⬇️', () => moveWorkstreamUI(workstream, 'down', wsIdx));
-          downBtn.disabled = wsIdx === workstreamOrder.length - 1; downBtn.style.opacity = wsIdx === workstreamOrder.length - 1 ? 0.4 : 1;
+          const upBtn = createIconButton('⬆️', () => moveWorkstreamUI(workstream, 'up', wsIdx), 'ws-move-btn');
+          upBtn.disabled = isMovingWS || wsIdx === 0; upBtn.style.opacity = upBtn.disabled ? 0.4 : 1;
+          const downBtn = createIconButton('⬇️', () => moveWorkstreamUI(workstream, 'down', wsIdx), 'ws-move-btn');
+          downBtn.disabled = isMovingWS || wsIdx === workstreamOrder.length - 1; downBtn.style.opacity = downBtn.disabled ? 0.4 : 1;
           const addTaskBtn = document.createElement('button');
           addTaskBtn.className = 'ml-2 text-blue-600 text-xs font-medium hover:underline bg-blue-100 rounded-lg px-2 py-1';
           addTaskBtn.textContent = '+ Add Task';
@@ -252,11 +250,10 @@
       card.appendChild(createField('Status', statusSelect));
       card.appendChild(createField('Remark', remarkQuill));
       card.appendChild(createField('Workstream', workstreamSelect));
-      // Up/Down arrows within workstream/same status
       const actionDiv = document.createElement('div');
       actionDiv.className = 'flex justify-end space-x-2 mt-2';
-
-      // Delete button
+      // ไม่มีปุ่ม move ขึ้น/ลงในแต่ละการ์ด
+      // Delete button only
       const delBtn = document.createElement('button');
       delBtn.textContent = '🗑️';
       delBtn.className = 'delete-btn';
@@ -266,7 +263,6 @@
       card.appendChild(actionDiv);
       return card;
     }
-    // --- Quill editor with toolbar per card ---
     function createQuillRemarkEditor(task, onChange) {
       const wrapper = document.createElement('div');
       wrapper.style.minWidth = '180px';
@@ -319,11 +315,10 @@
       }, 0);
       return wrapper;
     }
-    // --- /Quill ---
-    function createIconButton(text, onClick) {
+    function createIconButton(text, onClick, extraClass) {
       const btn = document.createElement('button');
       btn.textContent = text;
-      btn.className = 'text-xs text-gray-600 hover:text-black hover:scale-110 transition-transform';
+      btn.className = 'text-xs text-gray-600 hover:text-black hover:scale-110 transition-transform ' + (extraClass || '');
       btn.onclick = onClick;
       return btn;
     }
@@ -362,13 +357,31 @@
       }
     }
     function moveWorkstreamUI(workstream, direction, wsIdx) {
+      if (isMovingWS) return;
+      isMovingWS = true;
+      disableAllMoveWorkstreamBtns(true);
+
       let targetIdx = direction === 'up' ? wsIdx - 1 : wsIdx + 1;
-      if (targetIdx < 0 || targetIdx >= workstreamOrder.length) return;
+      if (targetIdx < 0 || targetIdx >= workstreamOrder.length) {
+        isMovingWS = false;
+        disableAllMoveWorkstreamBtns(false);
+        return;
+      }
       [workstreamOrder[wsIdx], workstreamOrder[targetIdx]] = [workstreamOrder[targetIdx], workstreamOrder[wsIdx]];
       renderWorkstreams();
       setTimeout(() => {
-        google.script.run.withSuccessHandler(loadData).moveWorkstreamInSheet(workstream, direction);
+        google.script.run.withSuccessHandler(() => {
+          isMovingWS = false;
+          disableAllMoveWorkstreamBtns(false);
+          loadData();
+        }).moveWorkstreamInSheet(workstream, direction);
       }, 350);
+    }
+    function disableAllMoveWorkstreamBtns(disabled) {
+      document.querySelectorAll('button.ws-move-btn').forEach(btn => {
+        btn.disabled = disabled;
+        btn.style.opacity = disabled ? 0.4 : 1;
+      });
     }
     function changeTaskWorkstream(rowIndex, newStream) {
       const task = allTasks.find(t => t.rowIndex == rowIndex);

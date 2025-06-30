@@ -164,16 +164,22 @@ function moveWorkstreamInSheet(workstream, direction) {
     wsMap[ws].forEach(idx => newRows.push(rows[idx]));
   });
 
-  // Write back to sheet (overwrite all rows below header)
-  if (newRows.length > 0)
-    sheet.getRange(2, 1, newRows.length, newRows[0].length).setValues(newRows);
-
-  // Remove extra rows if any
+  // *** Delete ALL data rows except header ***
   const lastRow = sheet.getLastRow();
-  if (lastRow > newRows.length + 1) sheet.deleteRows(newRows.length + 2, lastRow - (newRows.length + 1));
+  if (lastRow > 1) {
+    sheet.deleteRows(2, lastRow - 1); // ลบตั้งแต่แถว 2 ถึงแถวสุดท้าย
+  }
+
+  // *** Insert newRows (if any) ***
+  if (newRows.length > 0) {
+    sheet.getRange(2, 1, newRows.length, newRows[0].length).setValues(newRows);
+  }
 
   reindexAll();
 }
+
+
+
 
 function renameWorkstream(oldName, newName) {
   const ss = SpreadsheetApp.openById(SHEET_ID);
