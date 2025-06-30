@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>Project Activity Management</title>
@@ -8,22 +9,134 @@
   <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
   <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
   <style>
-    .editable-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px #93c5fd; }
-    .card { transition: transform 0.35s cubic-bezier(.4,2,.5,1), background 0.2s; will-change: transform; }
-    .kanban-board { overflow-x: auto; display: flex; gap: 2rem; padding-bottom: 1rem; }
-    .kanban-col { min-width: 340px; max-width: 340px; flex: 0 0 340px; display: flex; flex-direction: column; height: 100%; background: #f4f7fa; border-radius: 1rem; box-shadow: 0 2px 8px 0 rgba(0,0,0,0.04); border: 1px solid #e5e7eb; padding-bottom: 1rem; }
-    .kanban-tasks { flex: 1 1 auto; overflow-y: auto; padding: 0 0.25rem; }
-    .kanban-title { font-size: 1.1rem; font-weight: bold; padding: 1rem 1rem 0.5rem 1rem; color: #2563eb; border-bottom: 2px solid #2563eb22; background: #e0e7ff; border-radius: 1rem 1rem 0 0; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; gap: 0.3rem;}
-    .toggle-btn { transition: all 0.2s; border-radius: 9999px; font-weight: 500; font-size: 1rem; padding: 0.3rem 1.3rem 0.3rem 2.2rem; background: linear-gradient(90deg,#e0e7ff 60%,#a5b4fc 100%); color: #1e293b; position: relative; border: 1px solid #6366f1; margin-bottom: 1rem; margin-right: 1rem; box-shadow: 0 2px 8px 0 rgba(99,102,241,.07);}
-    .toggle-btn::before { content: ""; position: absolute; left: 0.5rem; top: 0.32rem; width: 1.5rem; height: 1.5rem; border-radius: 50%; background: #6366f1; transition: background 0.2s;}
-    .toggle-btn[data-mode="kanban"]::before { background: #f59e42;}
-    .delete-btn { color: #b91c1c; background: #fee2e2; padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 1.1em; margin-left: 0.7rem; font-weight: bold; cursor: pointer; border: none; transition: background 0.15s, color 0.15s;}
-    .delete-btn:hover { background: #f87171; color: #fff;}
-    .add-ws-bar { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 0.75rem; display: flex; align-items: center; margin-bottom: 1.5rem; padding: 1rem 1.5rem; gap: 1rem; box-shadow: 0 2px 8px 0 rgba(16,37,60,.04); max-width: 600px;}
-    .quill-card-remark .ql-container { min-height: 38px !important; border-radius: 0.5rem; background: white; font-size: 1em;}
-    .quill-card-remark .ql-toolbar { border-radius: 0.5rem 0.5rem 0 0; }
+    .editable-input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px #93c5fd;
+    }
+
+    .card {
+      transition: transform 0.35s cubic-bezier(.4, 2, .5, 1), background 0.2s;
+      will-change: transform;
+    }
+
+    .kanban-board {
+      overflow-x: auto;
+      display: flex;
+      gap: 2rem;
+      padding-bottom: 1rem;
+    }
+
+    .kanban-col {
+      min-width: 340px;
+      max-width: 340px;
+      flex: 0 0 340px;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background: #f4f7fa;
+      border-radius: 1rem;
+      box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.04);
+      border: 1px solid #e5e7eb;
+      padding-bottom: 1rem;
+    }
+
+    .kanban-tasks {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      padding: 0 0.25rem;
+    }
+
+    .kanban-title {
+      font-size: 1.1rem;
+      font-weight: bold;
+      padding: 1rem 1rem 0.5rem 1rem;
+      color: #2563eb;
+      border-bottom: 2px solid #2563eb22;
+      background: #e0e7ff;
+      border-radius: 1rem 1rem 0 0;
+      margin-bottom: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .toggle-btn {
+      transition: all 0.2s;
+      border-radius: 9999px;
+      font-weight: 500;
+      font-size: 1rem;
+      padding: 0.3rem 1.3rem 0.3rem 2.2rem;
+      background: linear-gradient(90deg, #e0e7ff 60%, #a5b4fc 100%);
+      color: #1e293b;
+      position: relative;
+      border: 1px solid #6366f1;
+      margin-bottom: 1rem;
+      margin-right: 1rem;
+      box-shadow: 0 2px 8px 0 rgba(99, 102, 241, .07);
+    }
+
+    .toggle-btn::before {
+      content: "";
+      position: absolute;
+      left: 0.5rem;
+      top: 0.32rem;
+      width: 1.5rem;
+      height: 1.5rem;
+      border-radius: 50%;
+      background: #6366f1;
+      transition: background 0.2s;
+    }
+
+    .toggle-btn[data-mode="kanban"]::before {
+      background: #f59e42;
+    }
+
+    .delete-btn {
+      color: #b91c1c;
+      background: #fee2e2;
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+      font-size: 1.1em;
+      margin-left: 0.7rem;
+      font-weight: bold;
+      cursor: pointer;
+      border: none;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .delete-btn:hover {
+      background: #f87171;
+      color: #fff;
+    }
+
+    .add-ws-bar {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 0.75rem;
+      display: flex;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      padding: 1rem 1.5rem;
+      gap: 1rem;
+      box-shadow: 0 2px 8px 0 rgba(16, 37, 60, .04);
+      max-width: 600px;
+    }
+
+    .quill-card-remark .ql-container {
+      min-height: 38px !important;
+      border-radius: 0.5rem;
+      background: white;
+      font-size: 1em;
+    }
+
+    .quill-card-remark .ql-toolbar {
+      border-radius: 0.5rem 0.5rem 0 0;
+    }
   </style>
 </head>
+
 <body class="p-4 sm:p-6 bg-gray-50">
   <div class="max-w-7xl mx-auto">
     <h1 class="text-3xl font-bold text-gray-800 mb-4">Project Activity Management</h1>
@@ -33,18 +146,30 @@
         <span id="toggleViewLabel">Kanban View</span>
       </button>
       <div class="add-ws-bar">
-        <input id="wsInput" type="text" placeholder="New workstream name" class="border px-3 py-1 rounded text-base bg-white focus:border-blue-400 w-48 mr-3"/>
-        <button id="addWsBtn" class="px-4 py-1 bg-blue-600 text-white rounded font-semibold shadow hover:bg-blue-700" onclick="addWorkstreamUI()">Add Workstream</button>
+        <input id="wsInput" type="text" placeholder="New workstream name"
+          class="border px-3 py-1 rounded text-base bg-white focus:border-blue-400 w-48 mr-3" />
+        <button id="addWsBtn" class="px-4 py-1 bg-blue-600 text-white rounded font-semibold shadow hover:bg-blue-700"
+          onclick="addWorkstreamUI()">Add Workstream</button>
       </div>
     </div>
     <div class="mb-6 flex flex-wrap gap-2">
-      <button onclick="changeFilter('All')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow hover:bg-blue-700">All</button>
-      <button onclick="changeFilter('In-Progress')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg shadow hover:bg-green-700">In-Progress</button>
-      <button onclick="changeFilter('Not Start')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-yellow-500 rounded-lg shadow hover:bg-yellow-600">Not Start</button>
-      <button onclick="changeFilter('Complete')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-lg shadow hover:bg-gray-700">Complete</button>
-      <button onclick="changeFilter('On hold')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-lg shadow hover:bg-orange-600">On hold</button>
-      <button onclick="changeFilter('TBC from ttb')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg shadow hover:bg-purple-700">TBC from ttb</button>
-      <button onclick="changeFilter('Closed')" class="filter-btn px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg shadow hover:bg-red-700">Closed</button>
+      <button onclick="changeFilter('All')"
+        class="filter-btn px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow hover:bg-blue-700">All</button>
+      <button onclick="changeFilter('In-Progress')"
+        class="filter-btn px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg shadow hover:bg-green-700">In-Progress</button>
+      <button onclick="changeFilter('Not Start')"
+        class="filter-btn px-4 py-2 text-sm font-medium text-white bg-yellow-500 rounded-lg shadow hover:bg-yellow-600">Not
+        Start</button>
+      <button onclick="changeFilter('Complete')"
+        class="filter-btn px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-lg shadow hover:bg-gray-700">Complete</button>
+      <button onclick="changeFilter('On hold')"
+        class="filter-btn px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-lg shadow hover:bg-orange-600">On
+        hold</button>
+      <button onclick="changeFilter('TBC from ttb')"
+        class="filter-btn px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg shadow hover:bg-purple-700">TBC
+        from ttb</button>
+      <button onclick="changeFilter('Closed')"
+        class="filter-btn px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg shadow hover:bg-red-700">Closed</button>
     </div>
     <div id="workstreams"></div>
   </div>
@@ -204,14 +329,31 @@
     }
     function createTaskCard(task, i, workstream, taskList) {
       let cardBgClass = 'bg-gray-50';
-      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // ฟังก์ชันเปรียบเทียบ date แบบ ignore time zone
+      function dateToYMD(date) {
+        // ถ้าเป็น string เช่น "2024-06-30" -> return ตามนั้นเลย
+        if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(date)) {
+          return date.slice(0, 10);
+        }
+        // ถ้าเป็น Date object
+        if (date instanceof Date && !isNaN(date)) {
+          return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+        }
+        return '';
+      }
+
       if (task.duedate && task.status !== 'Complete' && task.status !== 'Closed') {
         const dueDate = new Date(task.duedate);
-        if (!isNaN(dueDate.getTime())) {
-          if (dueDate < today) cardBgClass = 'bg-red-100 border-red-200';
-          else if (dueDate.getTime() === today.getTime()) cardBgClass = 'bg-yellow-100 border-yellow-200';
-        }
+        const dueYMD = dateToYMD(dueDate);
+        const todayYMD = dateToYMD(today);
+        if (dueYMD < todayYMD) cardBgClass = 'bg-red-100 border-red-300';
+        else if (dueYMD === todayYMD) cardBgClass = 'bg-yellow-200 border-yellow-400';
       }
+
+
       const card = document.createElement('div');
       card.className = `card border rounded-lg p-3 shadow-sm ${cardBgClass}`;
       card.id = `task-card-${task.rowIndex}`;
@@ -235,7 +377,7 @@
       // Quill remark
       const remarkQuill = createQuillRemarkEditor(task, (e) => updateTask(task.rowIndex, 'remark', e.target.value));
       const statusSelect = createSelect(
-        ["Not Start","In-Progress","Complete","On hold","TBC from ttb","Closed","Open"],
+        ["Not Start", "In-Progress", "Complete", "On hold", "TBC from ttb", "Closed", "Open"],
         task.status,
         (e) => updateTask(task.rowIndex, 'status', e.target.value)
       );
@@ -303,7 +445,7 @@
           modules: { toolbar: '#' + toolbarId }
         });
         if (task.remark) quill.root.innerHTML = task.remark;
-        quill.on('text-change', function() {
+        quill.on('text-change', function () {
           onChange({ target: { value: quill.root.innerHTML } });
           quill.root.style.height = "auto";
           quill.root.style.height = (quill.root.scrollHeight) + "px";
@@ -352,7 +494,7 @@
       if (task) {
         task[field] = value;
         google.script.run.withSuccessHandler(() => {
-          if(field === 'status' || field === 'duedate'){ renderWorkstreams(); }
+          if (field === 'status' || field === 'duedate') { renderWorkstreams(); }
         }).updateTask(task);
       }
     }
@@ -400,4 +542,5 @@
     window.addEventListener('DOMContentLoaded', loadData);
   </script>
 </body>
+
 </html>
